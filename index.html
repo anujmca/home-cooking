@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anshaisha Home Cooked Food - UX Clickable Prototype</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+
+    <!-- Top Navigation and Control Bar -->
+    <header class="proto-header">
+        <div class="brand">
+            <span class="logo-icon">🍛</span>
+            <div>
+                <h1>Anshaisha Home Cooked Food</h1>
+                <p>UX Prototype Dashboard &bull; Founder: Meenakashi Raghav</p>
+            </div>
+        </div>
+        
+        <!-- View Switcher -->
+        <div class="view-switcher">
+            <button class="switcher-btn active" id="btn-admin-mob" onclick="switchView('admin-mob')">
+                <span class="btn-icon">📱</span> Admin Mobile (Meenakashi)
+            </button>
+            <button class="switcher-btn" id="btn-cust-mob" onclick="switchView('cust-mob')">
+                <span class="btn-icon">📱</span> Customer Mobile
+            </button>
+            <button class="switcher-btn" id="btn-admin-desk" onclick="switchView('admin-desk')">
+                <span class="btn-icon">💻</span> Admin Desktop
+            </button>
+            <button class="switcher-btn" id="btn-cust-desk" onclick="switchView('cust-desk')">
+                <span class="btn-icon">💻</span> Customer Desktop
+            </button>
+        </div>
+    </header>
+
+    <div class="proto-container">
+        <!-- Sidebar Simulator Controls & Analytics -->
+        <aside class="simulator-sidebar">
+            <div class="sim-card">
+                <h3>⚡ Simulation Controls</h3>
+                <p class="sim-desc">Use these to trigger live orders and clear databases.</p>
+                <button class="sim-action-btn primary" onclick="simulateNewOrder()">
+                    <span class="icon">🔔</span> Simulate New Order
+                </button>
+                <button class="sim-action-btn" onclick="resetPrototypeData()">
+                    <span class="icon">🔄</span> Reset Demo Data
+                </button>
+            </div>
+
+            <div class="sim-card usability-tracker">
+                <h3>⏱️ Usability Tracker</h3>
+                <p class="sim-desc">Tracks compliance with our strict speed rules.</p>
+                <div class="metric-row">
+                    <span class="metric-label">Last Action:</span>
+                    <span class="metric-value" id="last-action">-</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Taps taken:</span>
+                    <span class="metric-value highlight" id="tap-count">0</span>
+                </div>
+                <div class="metric-row">
+                    <span class="metric-label">Time taken:</span>
+                    <span class="metric-value highlight" id="action-timer">0.0s</span>
+                </div>
+                
+                <div class="usability-goals">
+                    <h4>Success Criteria Checklist:</h4>
+                    <ul class="goals-list">
+                        <li id="goal-menu"><span class="status-dot"></span> Publish menu under 2 min</li>
+                        <li id="goal-accept"><span class="status-dot"></span> Accept order under 5 sec</li>
+                        <li id="goal-payment"><span class="status-dot"></span> Record payment under 10 sec</li>
+                        <li id="goal-profit"><span class="status-dot"></span> Check profit under 15 sec</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="sim-card info-card">
+                <h3>📍 Sai World Empire</h3>
+                <p><strong>Serving Towers:</strong><br>Ceaser, Alexander, Napoleon</p>
+                <p><strong>Current Active Menu:</strong><br><span id="sim-active-menu-label" class="badge">Complete Meal</span></p>
+            </div>
+        </aside>
+
+        <!-- Main Display Frame -->
+        <main class="viewport-canvas">
+            
+            <!-- 1. ADMIN MOBILE FRAME -->
+            <div id="view-admin-mob" class="canvas-view active">
+                <div class="phone-mockup">
+                    <div class="phone-speaker"></div>
+                    <div class="phone-screen" id="admin-phone-screen">
+                        
+                        <!-- Admin Login Screen -->
+                        <div id="admin-login-screen" class="phone-app-screen active">
+                            <div class="login-brand">
+                                <div class="avatar-bg">🍳</div>
+                                <h2>Anshaisha</h2>
+                                <p>Home Cooked Food</p>
+                            </div>
+                            <div class="pin-entry-container">
+                                <p class="pin-title">Hello Meenakashi Raghav 👋</p>
+                                <p class="pin-subtitle">Enter your 4-digit PIN to start</p>
+                                <div class="pin-dots">
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                    <div class="dot"></div>
+                                </div>
+                                <div class="pin-keyboard">
+                                    <button onclick="pressPin('1')">1</button>
+                                    <button onclick="pressPin('2')">2</button>
+                                    <button onclick="pressPin('3')">3</button>
+                                    <button onclick="pressPin('4')">4</button>
+                                    <button onclick="pressPin('5')">5</button>
+                                    <button onclick="pressPin('6')">6</button>
+                                    <button onclick="pressPin('7')">7</button>
+                                    <button onclick="pressPin('8')">8</button>
+                                    <button onclick="pressPin('9')">9</button>
+                                    <button class="btn-clear" onclick="clearPin()">✖</button>
+                                    <button onclick="pressPin('0')">0</button>
+                                    <button class="btn-ok" onclick="submitPin()">✔</button>
+                                </div>
+                                <button class="quick-login-link" onclick="quickLogin()">⚡ Quick Unlock (1234)</button>
+                            </div>
+                        </div>
+
+                        <!-- Admin App Shell -->
+                        <div id="admin-app-shell" class="phone-app-screen">
+                            <!-- App Header -->
+                            <header class="app-header">
+                                <div class="user-greeting">
+                                    <span>Namaste Meenakashi 🙏</span>
+                                    <small id="current-app-date">Saturday, June 20</small>
+                                </div>
+                                <div class="header-actions">
+                                    <div class="notification-badge" onclick="adminSwitchTab('orders')">
+                                        🔔<span class="count-badge" id="order-badge-count">2</span>
+                                    </div>
+                                </div>
+                            </header>
+
+                            <!-- Notification Banner -->
+                            <div class="banner-alert hidden" id="incoming-order-banner" onclick="adminSwitchTab('orders')">
+                                <span class="bell-icon">🔔</span>
+                                <div class="banner-content">
+                                    <strong>New Order Received!</strong>
+                                    <small id="banner-order-desc">Alexander 2208 - ₹270</small>
+                                </div>
+                                <span class="banner-action-arrow">👉</span>
+                            </div>
+
+                            <!-- Screen Contents (Toggled by Tabs) -->
+                            <div class="app-content-area">
+                                
+                                <!-- Tab 1: Dashboard -->
+                                <section id="tab-admin-dash" class="tab-content active">
+                                    <!-- Finance Cards -->
+                                    <div class="finance-strip" onclick="adminSwitchTab('finances')">
+                                        <div class="fin-card rev">
+                                            <span class="fin-icon">💰</span>
+                                            <div class="fin-info">
+                                                <small>Today's Sales</small>
+                                                <strong id="dash-rev">₹1,950</strong>
+                                            </div>
+                                        </div>
+                                        <div class="fin-card exp">
+                                            <span class="fin-icon">📉</span>
+                                            <div class="fin-info">
+                                                <small>Today's Cost</small>
+                                                <strong id="dash-exp">₹730</strong>
+                                            </div>
+                                        </div>
+                                        <div class="fin-card profit">
+                                            <span class="fin-icon">🟢</span>
+                                            <div class="fin-info">
+                                                <small>Your Profit</small>
+                                                <strong id="dash-profit">₹1,220</strong>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Kitchen Today Status Switch -->
+                                    <div class="kitchen-status-toggle-card">
+                                        <div class="k-status-info">
+                                            <span id="k-status-indicator-dot" class="status-dot-large green"></span>
+                                            <div>
+                                                <h4>Kitchen is Open</h4>
+                                                <p id="k-status-msg-desc">Accepting today's lunch/dinner bookings</p>
+                                            </div>
+                                        </div>
+                                        <label class="switch">
+                                            <input type="checkbox" id="kitchen-today-close-toggle" onchange="toggleKitchenClosedToday(this.checked)">
+                                            <span class="switch-slider round"></span>
+                                        </label>
+                                    </div>
+
+                                    <!-- Quick Alerts -->
+                                    <div class="pending-alert-card" onclick="adminSwitchTab('payments')" id="dash-payments-alert">
+                                        <div class="alert-icon">⚠️</div>
+                                        <div class="alert-body">
+                                            <h4>Pending Payments</h4>
+                                            <p><span id="due-count">3</span> Customers owe you <strong id="due-amount">₹1,130</strong></p>
+                                        </div>
+                                        <span class="arrow-btn">➔</span>
+                                    </div>
+
+                                    <!-- Actionable New Orders Section (Always Expanded) -->
+                                    <div id="dashboard-new-orders-container" style="display:flex; flex-direction:column; gap:8px; margin-top:10px;">
+                                        <!-- JS rendered active New orders (Unaccepted/Unrejected) -->
+                                    </div>
+
+                                    <!-- Today's Preparing Queue Collapsible Accordion (Preparing/Accepted) -->
+                                    <div class="dashboard-orders-accordion-wrapper" style="margin-top: 14px; margin-bottom: 14px;">
+                                        <div class="dashboard-orders-accordion-header" onclick="toggleDashboardOrdersExpanded()" style="display:flex; justify-content:space-between; align-items:center; background-color:var(--primary-light); padding: 10px 12px; border-radius: var(--radius-md); border: 1px solid rgba(245, 124, 0, 0.15); cursor:pointer;">
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <span style="font-size: 16px;">🍲</span>
+                                                <strong style="font-size:12px; color:var(--text-main);"><span id="dash-preparing-count-badge">0</span> Orders Cooking Today</strong>
+                                            </div>
+                                            <div style="display:flex; align-items:center; gap:8px;">
+                                                <button class="text-link-btn" onclick="event.stopPropagation(); adminSwitchTab('orders')" style="font-size:10px; font-weight:700; background:none; border:none; color:var(--primary); cursor:pointer; padding:0; text-decoration:underline;">View All</button>
+                                                <span id="dash-orders-expand-arrow" style="font-size:10px; font-weight:700; color:var(--primary-hover);">Show Queue ▾</span>
+                                            </div>
+                                        </div>
+                                        <div class="mini-order-list hidden" id="dashboard-orders-list" style="margin-top: 8px; display: none; flex-direction: column; gap: 8px;">
+                                            <!-- Dynamic JS rendered active Preparing orders -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Quick Menu Status -->
+                                    <div class="menu-status-card">
+                                        <div class="card-title-row">
+                                            <h4>📢 Current Published Menu</h4>
+                                            <span class="tag-status active">Live</span>
+                                        </div>
+                                        <p id="dash-current-menu-summary">Veg Thali, Dal Tadka, Paneer Butter Masala</p>
+                                        <button class="secondary-action-btn" onclick="adminSwitchTab('menu')">
+                                            🍛 Update Menu / Share to WhatsApp
+                                        </button>
+                                    </div>
+
+                                    <!-- Utility Quick Grid -->
+                                    <div class="quick-utils-grid">
+                                        <div class="util-box" onclick="showAnnouncementModal()">
+                                            <span class="util-icon">📢</span>
+                                            <span>Send Broadcast</span>
+                                        </div>
+                                        <div class="util-box" onclick="showLeaveModal()">
+                                            <span class="util-icon">📅</span>
+                                            <span>Declare Leave</span>
+                                        </div>
+                                        <div class="util-box" onclick="showCustomerListModal()">
+                                            <span class="util-icon">👥</span>
+                                            <span>Customer List</span>
+                                        </div>
+                                        <div class="util-box" onclick="showFeedbackModal()">
+                                            <span class="util-icon">⭐</span>
+                                            <span>Feedbacks</span>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Tab 2: Menu Builder -->
+                                <section id="tab-admin-menu" class="tab-content">
+                                    <div class="menu-builder-flow">
+                                        <div class="flow-header">
+                                            <h3>🍛 Daily Menu Builder</h3>
+                                            <span class="help-bubble" title="Publish today's menu in 3 taps">⚡ Fast Mode</span>
+                                        </div>
+
+                                        <!-- Step 1: Session select -->
+                                        <div class="form-group-row">
+                                            <label>Serving For:</label>
+                                            <div class="toggle-switch-container">
+                                                <input type="radio" id="menu-lunch" name="menu-time" value="Lunch" checked>
+                                                <label for="menu-lunch" class="toggle-btn">☀️ Lunch</label>
+                                                <input type="radio" id="menu-dinner" name="menu-time" value="Dinner">
+                                                <label for="menu-dinner" class="toggle-btn">🌙 Dinner</label>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 2: Choose Dishes (Preset Chips) -->
+                                        <div class="menu-selection-section">
+                                            <label class="section-sub">Choose Dishes for Today:</label>
+                                            <div class="dish-preset-grid">
+                                                <!-- Dynamic JS will render presets, Dal, Sabji, Roti check chips -->
+                                                <label class="preset-chip active" id="preset-chip-meal">
+                                                    <input type="checkbox" checked value="Anshaisha Complete Meal" data-price="200" onchange="togglePresetChip(this)">
+                                                    <span>🍱 Complete Meal (₹200)</span>
+                                                </label>
+                                            </div>
+                                            
+                                            <!-- Meal details preview / edit -->
+                                            <div class="complete-meal-details-box" id="meal-details-editor-box">
+                                                <label>Meal Contents Today:</label>
+                                                <input type="text" id="complete-meal-desc-input" value="1 Dal Tadka, 1 Aloo Gobhi Sabji, 4 Rotis, 1 Bowl Jeera Rice, Salad, Chutney">
+                                                <div class="meal-customizer-rates-row">
+                                                    <div>
+                                                        <small>Extra Roti (₹):</small>
+                                                        <input type="number" id="rate-extra-roti" value="10">
+                                                    </div>
+                                                    <div>
+                                                        <small>No Rice Less (₹):</small>
+                                                        <input type="number" id="rate-no-rice" value="20">
+                                                    </div>
+                                                    <div>
+                                                        <small>Extra Sabji (₹):</small>
+                                                        <input type="number" id="rate-extra-sabji" value="40">
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="preset-others-heading">Other Optional Items:</div>
+                                            <div class="dish-preset-grid" id="optional-presets-list">
+                                                <!-- JS populated optional list -->
+                                            </div>
+
+                                            <!-- Custom Quick Add -->
+                                            <div class="quick-add-dish-row">
+                                                <input type="text" id="custom-dish-name" placeholder="➕ Type new dish name (e.g. Aloo Gobhi)">
+                                                <input type="number" id="custom-dish-price" placeholder="Price (₹)" min="0">
+                                                <button class="add-dish-btn" onclick="addCustomDish()">Add</button>
+                                            </div>
+                                        </div>
+
+                                        <!-- Step 3: Choose Visual Food Photo Template -->
+                                        <div class="menu-selection-section">
+                                            <label class="section-sub">📢 Choose Menu Image Theme (For sharing to WhatsApp groups)</label>
+                                            <p class="theme-desc">This theme sets the colors of the menu image generated for your WhatsApp broadcast sharing.</p>
+                                            <div class="graphic-template-grid">
+                                                <div class="template-card active" onclick="selectGraphicTemplate(this, 'saffron')">
+                                                    <div class="temp-preview saffron">🍛</div>
+                                                    <span>Traditional Saffron</span>
+                                                </div>
+                                                <div class="template-card" onclick="selectGraphicTemplate(this, 'mint')">
+                                                    <div class="temp-preview mint">🥗</div>
+                                                    <span>Fresh Mint Green</span>
+                                                </div>
+                                                <div class="template-card" onclick="selectGraphicTemplate(this, 'dark')">
+                                                    <div class="temp-preview dark">🍲</div>
+                                                    <span>Modern Dark Slate</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Publish Trigger -->
+                                        <button class="primary-action-btn pulse-glow" onclick="publishDailyMenu()">
+                                            ✨ Publish & Share Menu (1 Tap)
+                                        </button>
+                                    </div>
+                                </section>
+
+                                <!-- Tab 3: Order Management -->
+                                <section id="tab-admin-orders" class="tab-content">
+                                    <div class="orders-header">
+                                        <div class="orders-title-row">
+                                            <h3>📝 Order Manager</h3>
+                                            <button class="phone-order-action-btn" onclick="openImpersonationModal()">
+                                                📞 + Place Phone Order
+                                            </button>
+                                        </div>
+                                        <div class="orders-sub-tabs">
+                                            <button class="sub-tab active" onclick="toggleOrderTimeFilter('today')">Today (<span id="count-today-orders">3</span>)</button>
+                                            <button class="sub-tab" onclick="toggleOrderTimeFilter('tomorrow')">Tomorrow (<span id="count-tomorrow-orders">1</span>)</button>
+                                            <button class="sub-tab" onclick="toggleOrderTimeFilter('history')">History</button>
+                                        </div>
+                                    </div>
+ 
+                                    <!-- Bulk Actions Control Panel -->
+                                    <div class="bulk-actions-panel" id="admin-bulk-actions-panel" style="padding: 8px 12px; margin: 0 12px 8px 12px; background-color: var(--primary-light); border: 1px solid rgba(245, 124, 0, 0.2); border-radius: var(--radius-md); display: flex; align-items: center; justify-content: space-between; gap: 8px; box-shadow: var(--shadow-sm);">
+                                        <div style="display:flex; align-items:center; gap:6px;">
+                                            <input type="checkbox" id="bulk-select-all-checkbox" onchange="toggleBulkSelectAll(this.checked)" style="width: 16px; height: 16px; cursor: pointer;">
+                                            <label for="bulk-select-all-checkbox" style="font-size: 11px; font-weight:700; color:var(--text-main); cursor: pointer; user-select:none;">Select All</label>
+                                        </div>
+                                        <div style="display:flex; gap:6px; align-items:center;">
+                                            <span style="font-size: 9.5px; font-weight:700; color:var(--text-muted); margin-right:4px;"><span id="bulk-select-count">0</span> Selected</span>
+                                            <button class="sim-action-btn primary small" onclick="runBulkAction('accept')" style="padding: 3px 6px; font-size: 9.5px; border-radius: 4px; height: 22px;">Accept</button>
+                                            <button class="sim-action-btn primary small" onclick="runBulkAction('deliver')" style="padding: 3px 6px; font-size: 9.5px; border-radius: 4px; height: 22px; background-color: var(--secondary); border-color: var(--secondary);">Deliver</button>
+                                            <button class="sim-action-btn small" onclick="runBulkAction('reject')" style="padding: 3px 6px; font-size: 9.5px; border-radius: 4px; height: 22px; background-color: var(--danger); border-color: var(--danger); color: white;">Reject</button>
+                                        </div>
+                                    </div>
+ 
+                                    <div class="orders-list-container" id="admin-orders-list">
+                                        <!-- Dynamic JS rendered orders with instant buttons -->
+                                    </div>
+                                </section>
+
+                                <!-- Tab 4: Payments Follow-up -->
+                                <section id="tab-admin-payments" class="tab-content">
+                                    <div class="payments-header">
+                                        <h3>💰 Outstanding Payments</h3>
+                                        <p>Send easy WhatsApp reminders to clear dues.</p>
+                                    </div>
+
+                                    <div class="payments-list" id="admin-payments-list">
+                                        <!-- Dynamic JS payment cards -->
+                                    </div>
+                                </section>
+
+                                <!-- Tab 5: Finances / Profit -->
+                                <section id="tab-admin-finances" class="tab-content">
+                                    <div class="finances-dashboard">
+                                        <div class="profit-summary-card">
+                                            <h3>Today's Profit Sheet</h3>
+                                            <div class="profit-math">
+                                                <div class="math-item">
+                                                    <span class="math-val" id="fin-revenue">₹1,950</span>
+                                                    <small>Revenue</small>
+                                                </div>
+                                                <span class="math-sign">−</span>
+                                                <div class="math-item">
+                                                    <span class="math-val red" id="fin-expenses">₹730</span>
+                                                    <small>Expenses</small>
+                                                </div>
+                                                <span class="math-sign">=</span>
+                                                <div class="math-item">
+                                                    <span class="math-val green" id="fin-netprofit">₹1,220</span>
+                                                    <small>Net Profit</small>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Log Expense Form -->
+                                        <div class="log-expense-card">
+                                            <h4>➕ Log New Expense</h4>
+                                            <div class="expense-categories">
+                                                <button class="category-chip active" onclick="selectExpenseCategory(this, 'Vegetables', '🥕')">🥕 Veggies</button>
+                                                <button class="category-chip" onclick="selectExpenseCategory(this, 'Gas', '🔥')">🔥 Gas</button>
+                                                <button class="category-chip" onclick="selectExpenseCategory(this, 'Packaging', '📦')">📦 Packaging</button>
+                                                <button class="category-chip" onclick="selectExpenseCategory(this, 'Helper', '👩‍🍳')">👩‍🍳 Helper</button>
+                                                <button class="category-chip" onclick="selectExpenseCategory(this, 'Grocery', '🌾')">🌾 Grocery</button>
+                                                <button class="category-chip" onclick="selectExpenseCategory(this, 'Others', '⚙️')">⚙️ Others</button>
+                                            </div>
+                                            
+                                            <div class="expense-inputs">
+                                                <div class="amount-field-wrapper">
+                                                    <span class="curr-symbol">₹</span>
+                                                    <input type="number" id="expense-amount" placeholder="0" min="1">
+                                                </div>
+                                                <input type="text" id="expense-notes" placeholder="Notes (e.g. Helper daily wages)">
+                                            </div>
+
+                                            <div class="quick-amounts">
+                                                <button onclick="setExpenseAmount(50)">+₹50</button>
+                                                <button onclick="setExpenseAmount(100)">+₹100</button>
+                                                <button onclick="setExpenseAmount(200)">+₹200</button>
+                                                <button onclick="setExpenseAmount(500)">+₹500</button>
+                                            </div>
+
+                                            <button class="secondary-action-btn" onclick="submitExpense()">
+                                                📝 Save Expense (Instant Recalculation)
+                                            </button>
+                                        </div>
+
+                                        <!-- Expenses Log List -->
+                                        <div class="logged-expenses-section">
+                                            <h4>Logged Today:</h4>
+                                            <ul class="expenses-list" id="logged-expenses-list">
+                                                <!-- Dynamic JS rendered -->
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </section>
+
+                            </div>
+
+                            <!-- App Tab Bar -->
+                            <footer class="app-nav-bar">
+                                <button class="nav-item active" onclick="adminSwitchTab('dash')">
+                                    <span class="nav-icon">🏠</span>
+                                    <span>Home</span>
+                                </button>
+                                <button class="nav-item" onclick="adminSwitchTab('menu')">
+                                    <span class="nav-icon">🍛</span>
+                                    <span>Menu</span>
+                                </button>
+                                <button class="nav-item" onclick="adminSwitchTab('orders')">
+                                    <span class="nav-icon">📝</span>
+                                    <span>Orders</span>
+                                </button>
+                                <button class="nav-item" onclick="adminSwitchTab('payments')">
+                                    <span class="nav-icon">💰</span>
+                                    <span>Payments</span>
+                                </button>
+                                <button class="nav-item" onclick="adminSwitchTab('finances')">
+                                    <span class="nav-icon">📊</span>
+                                    <span>Profit</span>
+                                </button>
+                            </footer>
+                        </div>
+
+                    </div>
+                    <div class="phone-home-btn"></div>
+                </div>
+            </div>
+
+            <!-- 2. CUSTOMER MOBILE FRAME -->
+            <div id="view-cust-mob" class="canvas-view">
+                <div class="phone-mockup">
+                    <div class="phone-speaker"></div>
+                    <div class="phone-screen" id="cust-phone-screen">
+                        
+                        <!-- Customer Login Screen -->
+                        <div id="cust-login-screen" class="phone-app-screen active" style="background-color: var(--app-bg); height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 20px; box-sizing: border-box; position: absolute; top:0; left:0; width:100%; z-index:10;">
+                            <div class="login-brand" style="text-align: center; margin-bottom: 24px;">
+                                <div class="avatar-bg" style="width: 70px; height: 70px; border-radius: 50%; background-color: var(--primary-light); display: flex; align-items: center; justify-content: center; font-size: 32px; margin: 0 auto 12px auto; box-shadow: var(--shadow-sm);">🍛</div>
+                                <h2 style="font-weight: 800; color: var(--text-main); font-size: 22px; margin: 0;">Anshaisha</h2>
+                                <p style="font-size: 11px; color: var(--text-muted); margin: 4px 0 0 0; text-transform: uppercase; letter-spacing: 1px;">Home Kitchen</p>
+                            </div>
+                            
+                            <div style="width: 100%; max-width: 260px;">
+                                <p style="font-size: 11.5px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; text-align: center;">Welcome Resident! 👋</p>
+                                <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 16px; text-align: center; line-height: 1.3;">Enter your phone number to view today's special menu and order.</p>
+                                
+                                <div class="form-group" style="margin-bottom: 12px;">
+                                    <label style="font-weight:700; font-size:10px;">Phone Number:</label>
+                                    <input type="tel" id="cust-login-phone" placeholder="e.g. 9876543210" maxlength="10" value="9876543210" style="width:100%; padding:8px; font-size:13px; border-radius:6px; border: 1px solid var(--app-border);">
+                                </div>
+                                
+                                <button class="primary-action-btn" onclick="submitCustomerLogin()" style="width: 100%; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 12px; margin-top: 4px;">
+                                    Verify & View Menu ➔
+                                </button>
+                                
+                                <div style="margin-top: 20px; border-top: 1px dashed var(--app-border); padding-top: 12px;">
+                                    <span style="font-size: 9px; font-weight: 700; color: var(--text-muted); display: block; text-align: center; margin-bottom: 8px; text-transform: uppercase;">Or choose a resident profile:</span>
+                                    <div style="display: flex; gap: 6px; justify-content: center;">
+                                        <button class="sim-action-btn small" onclick="quickCustomerLogin('Amit Sharma', '9876543210', 'Alexander', '22', '08')" style="padding: 4px 8px; font-size: 9.5px; margin: 0; background: #fff; border: 1px solid var(--app-border); cursor: pointer;">Amit (Alex 2208)</button>
+                                        <button class="sim-action-btn small" onclick="quickCustomerLogin('Sonia Kapoor', '9930048123', 'Ceaser', '14', '02')" style="padding: 4px 8px; font-size: 9.5px; margin: 0; background: #fff; border: 1px solid var(--app-border); cursor: pointer;">Sonia (Ceas 1402)</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+ 
+                        <!-- Customer App Shell -->
+                        <div class="phone-app-screen" id="customer-app-shell">
+                            <!-- App Header -->
+                            <header class="app-header customer">
+                                <div class="brand-info">
+                                    <span class="tagline">Anshaisha Home Kitchen</span>
+                                    <h3 id="cust-header-greet">Fresh Home-Cooked Food</h3>
+                                </div>
+                                <span class="address-badge" id="cust-header-addr">📍 Alexander 2208</span>
+                            </header>
+
+                            <!-- App Content -->
+                            <div class="app-content-area customer">
+                                
+                                <!-- Customer Tab 1: Today's Menu -->
+                                <section id="tab-cust-menu" class="tab-content active">
+                                    <div class="announcement-banner" id="announcement-banner-view">
+                                        📢 <em>Meenakashi:</em> Lunch orders accepted till 11:30 AM. Fresh ingredients only!
+                                    </div>
+
+                                    <!-- Dynamic Horizontal Date Strip Booking Selector -->
+                                    <div style="margin-top: 10px; margin-bottom: 2px;">
+                                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 4px; padding: 0 4px;">
+                                            <span style="font-size: 11px; font-weight: 700; color: var(--text-muted);">📅 BOOK YOUR MEAL DATE:</span>
+                                            <strong id="cust-selected-order-date-label" style="font-size: 11.5px; color: var(--primary-hover);">Today (June 21)</strong>
+                                        </div>
+                                        <div class="cust-date-strip" id="customer-date-strip">
+                                            <!-- Dynamically filled with next 7 days cards + custom selector by JS -->
+                                        </div>
+                                        <input type="date" id="cust-future-date-picker" class="hidden-date-picker" onchange="selectCustomerOrderingDate('date', this.value)">
+                                    </div>
+
+                                    <!-- Lunch / Dinner Filter -->
+                                    <div class="menu-session-indicator">
+                                        <span id="cust-menu-session-badge">☀️ LUNCH SPECIAL</span>
+                                    </div>
+
+                                    <!-- Dynamic food items menu -->
+                                    <div class="food-menu-list" id="customer-menu-items">
+                                        <!-- JS dynamic rendering -->
+                                    </div>
+
+                                    <!-- Float Cart Sheet -->
+                                    <div class="cart-preview-bar hidden" id="cart-float-bar" onclick="showCheckoutModal()">
+                                        <div class="cart-details">
+                                            <span class="cart-badge-count" id="cart-badge-qty">1 Item</span>
+                                            <span class="cart-total" id="cart-float-total">₹150</span>
+                                        </div>
+                                        <button class="cart-view-btn">Go to Checkout ➔</button>
+                                    </div>
+                                </section>
+
+                                <!-- Customer Tab 2: Track Order & History -->
+                                <section id="tab-cust-orders" class="tab-content">
+                                    <div class="order-tracking-container">
+                                        <h4>📦 Active Orders:</h4>
+                                        <div id="customer-order-tracking-list">
+                                            <!-- JS Dynamic active tracking rendering -->
+                                        </div>
+                                        
+                                        <h4 style="margin-top: 18px;">📋 Your Order History:</h4>
+                                        <div class="past-orders-list" id="customer-past-orders-history">
+                                            <!-- JS Dynamic history list rendering -->
+                                        </div>
+                                    </div>
+                                </section>
+
+                                <!-- Customer Tab 3: Profile Settings -->
+                                <section id="tab-cust-profile" class="tab-content">
+                                    <div class="profile-settings-card">
+                                        <h4>👤 Manage Your Profile</h4>
+                                        <div class="avatar-select-strip">
+                                            <label class="avatar-option active" onclick="selectAvatar('👩‍💼')">
+                                                <span>👩‍💼</span>
+                                                <small>Office</small>
+                                            </label>
+                                            <label class="avatar-option" onclick="selectAvatar('👨‍👩‍👦')">
+                                                <span>👨‍👩‍👦</span>
+                                                <small>Family</small>
+                                            </label>
+                                            <label class="avatar-option" onclick="selectAvatar('👴')">
+                                                <span>👴</span>
+                                                <small>Senior</small>
+                                            </label>
+                                        </div>
+
+                                        <div class="form-group" style="margin-top:10px;">
+                                            <label>Your Name:</label>
+                                            <input type="text" id="profile-name" value="Amit Sharma">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Phone Number:</label>
+                                            <input type="text" id="profile-phone" value="9876543210">
+                                        </div>
+                                        
+                                        <div class="profile-address-box">
+                                            <label>📍 Default Address defaults:</label>
+                                            <div class="form-group">
+                                                <small>Tower:</small>
+                                                <select id="profile-tower" onchange="syncProfileAddressChange()">
+                                                    <option value="Alexander" selected>Alexander</option>
+                                                    <option value="Ceaser">Ceaser</option>
+                                                    <option value="Napoleon">Napoleon</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group-row" style="margin-top: 4px;">
+                                                <div class="form-group" style="flex:1;">
+                                                    <small>Floor:</small>
+                                                    <input type="number" id="profile-floor" value="22" min="1" max="40" oninput="syncProfileAddressChange()">
+                                                </div>
+                                                <div class="form-group" style="flex:1;">
+                                                    <small>Flat:</small>
+                                                    <input type="number" id="profile-flat" value="8" min="1" max="8" oninput="syncProfileAddressChange()">
+                                                </div>
+                                            </div>
+                                            <div class="address-preview-tag" id="profile-address-compiled-lbl">
+                                                Address Compiled: Alexander 2208
+                                            </div>
+                                        </div>
+
+                                        <button class="primary-action-btn" style="margin-top: 10px;" onclick="saveCustomerProfile()">
+                                            💾 Save Settings & Update Address
+                                        </button>
+                                        <button class="secondary-action-btn" style="margin-top: 8px; width: 100%; border: 1px solid var(--danger); color: var(--danger); background: transparent; padding: 10px; border-radius: 8px; font-weight: 700; font-size: 12px; cursor: pointer;" onclick="logoutCustomer()">
+                                            🚪 Log Out Profile
+                                        </button>
+                                    </div>
+                                </section>
+
+                            </div>
+
+                            <!-- Customer Bottom Nav Bar -->
+                            <footer class="app-nav-bar customer-nav">
+                                <button class="nav-item active" onclick="custSwitchTab('menu')">
+                                    <span class="nav-icon">🍽️</span>
+                                    <span>Today's Menu</span>
+                                </button>
+                                <button class="nav-item" onclick="custSwitchTab('orders')">
+                                    <span class="nav-icon">📦</span>
+                                    <span>My Orders</span>
+                                </button>
+                                <button class="nav-item" onclick="custSwitchTab('profile')">
+                                    <span class="nav-icon">👤</span>
+                                    <span>Profile</span>
+                                </button>
+                            </footer>
+                        </div>
+
+                    </div>
+                    <div class="phone-home-btn"></div>
+                </div>
+            </div>
+
+            <!-- 3. ADMIN DESKTOP CANVAS -->
+            <div id="view-admin-desk" class="canvas-view">
+                <div class="desktop-screen-mock">
+                    <div class="desk-window-bar">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span class="window-title">Anshaisha Portal - Admin Dashboard (Meenakashi)</span>
+                    </div>
+                    <div class="desk-layout-body">
+                        <!-- Desktop Sidebar -->
+                        <aside class="desk-nav">
+                            <div class="nav-profile">
+                                <div class="nav-avatar">🍳</div>
+                                <h4>Meenakashi Raghav</h4>
+                                <small>Founder & Chef</small>
+                            </div>
+                            <ul class="desk-menu-links">
+                                <li class="active" onclick="switchDesktopSubtab('dashboard')">🏠 Dashboard</li>
+                                <li onclick="switchDesktopSubtab('orders')">📝 Orders Board</li>
+                                <li onclick="switchDesktopSubtab('menu')">🍛 Menu Builder</li>
+                                <li onclick="switchDesktopSubtab('payments')">💰 Payments Follow-Up</li>
+                                <li onclick="switchDesktopSubtab('finances')">📊 Detailed Finances</li>
+                            </ul>
+                            <div class="desk-kitchen-status-box" style="margin: 15px 12px; padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.08); display: flex; flex-direction: column; gap: 8px; border: 1px solid rgba(255,255,255,0.1);">
+                                <div style="display: flex; align-items: center; gap: 8px; justify-content: space-between;">
+                                    <span style="font-size: 10px; font-weight: 700; letter-spacing: 0.5px; color: rgba(255,255,255,0.6);">KITCHEN STATUS:</span>
+                                    <span id="k-status-indicator-dot-desk" class="status-dot green" style="width: 8px; height: 8px; border-radius: 50%; display: inline-block; background-color: var(--success);"></span>
+                                </div>
+                                <div style="display: flex; align-items: center; justify-content: space-between; gap: 6px;">
+                                    <span id="k-status-text-desk" style="font-weight: bold; font-size: 13px; color: #fff;">Open Today</span>
+                                    <label class="switch small-switch">
+                                        <input type="checkbox" id="kitchen-today-close-toggle-desk" onchange="toggleKitchenClosedToday(this.checked)">
+                                        <span class="switch-slider round"></span>
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="nav-footer-stats">
+                                <p><strong>Profit Margin:</strong> 62.5%</p>
+                                <p><strong>Happy Customers:</strong> 48</p>
+                            </div>
+                        </aside>
+
+                        <!-- Desktop Main Panel -->
+                        <main class="desk-content-panel">
+                            <!-- Live Updating Stats Bar -->
+                            <section class="desk-stats-grid">
+                                <div class="desk-stat-card rev">
+                                    <small>TOTAL SALES TODAY</small>
+                                    <h2 class="val" id="d-rev">₹1,950</h2>
+                                </div>
+                                <div class="desk-stat-card exp">
+                                    <small>TOTAL EXPENSES TODAY</small>
+                                    <h2 class="val" id="d-exp">₹730</h2>
+                                </div>
+                                <div class="desk-stat-card profit">
+                                    <small>NET PROFIT TODAY</small>
+                                    <h2 class="val" id="d-profit">₹1,220</h2>
+                                </div>
+                                <div class="desk-stat-card active-orders">
+                                    <small>PENDING ORDERS</small>
+                                    <h2 class="val" id="d-orders-count">3</h2>
+                                </div>
+                            </section>
+
+                            <div class="desk-tab-panels">
+                                <!-- Subtab: Dashboard Overview -->
+                                <div id="desk-sub-dashboard" class="desk-sub-panel active">
+                                    <div class="desk-grid-2col">
+                                        <!-- Column 1: Live Order Board -->
+                                        <div class="desk-card">
+                                            <div class="card-header-actions">
+                                                <h3>📝 Today's Live Kitchen Board</h3>
+                                                <div style="display:flex; gap:10px; align-items:center;">
+                                                    <!-- Desktop Bulk Actions -->
+                                                    <div id="desk-bulk-actions-bar" style="display:none; align-items:center; gap:6px; background:rgba(245, 124, 0, 0.08); padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(245, 124, 0, 0.15);">
+                                                        <span style="font-size: 11px; font-weight:700; color:var(--primary); margin-right:4px;"><span id="bulk-select-count-desk">0</span> Selected</span>
+                                                        <button class="sim-action-btn primary small" onclick="runBulkActionDesk('accept')" style="padding: 2px 6px; font-size: 10px; height:22px; margin:0;">Accept</button>
+                                                        <button class="sim-action-btn primary small" onclick="runBulkActionDesk('deliver')" style="padding: 2px 6px; font-size: 10px; height:22px; margin:0; background-color: var(--secondary); border-color: var(--secondary);">Deliver</button>
+                                                        <button class="sim-action-btn small" onclick="runBulkActionDesk('reject')" style="padding: 2px 6px; font-size: 10px; height:22px; margin:0; background-color: var(--danger); border-color: var(--danger); color: white;">Reject</button>
+                                                    </div>
+                                                    
+                                                    <button class="sim-action-btn primary small" onclick="openImpersonationModal()">📞 Place Phone Order</button>
+                                                    <button class="sim-action-btn small" onclick="simulateNewOrder()">Simulate Order</button>
+                                                </div>
+                                            </div>
+                                            <div class="desk-orders-table-wrapper">
+                                                <table class="desk-table">
+                                                    <thead>
+                                                        <tr>
+                                                            <th style="width: 32px; text-align: center;"><input type="checkbox" id="bulk-select-all-checkbox-desk" onchange="toggleBulkSelectAllDesk(this.checked)" style="cursor: pointer; width: 15px; height: 15px;"></th>
+                                                            <th>Time</th>
+                                                            <th>Customer</th>
+                                                            <th>Tower/Flat</th>
+                                                            <th>Order Items</th>
+                                                            <th>Amount</th>
+                                                            <th>Status</th>
+                                                            <th>Actions</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="desk-dashboard-orders">
+                                                        <!-- JS rendered -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Column 2: Payment follow up & Quick broadcast -->
+                                        <div class="desk-card">
+                                            <h3>💰 Outstanding Dues</h3>
+                                            <div class="desk-payments-list" id="desk-dashboard-payments">
+                                                <!-- JS rendered -->
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </main>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. CUSTOMER DESKTOP CANVAS -->
+            <div id="view-cust-desk" class="canvas-view">
+                <div class="desktop-screen-mock">
+                    <div class="desk-window-bar">
+                        <span class="dot red"></span>
+                        <span class="dot yellow"></span>
+                        <span class="dot green"></span>
+                        <span class="window-title">Anshaisha Home Cooked Food - Ordering Portal</span>
+                    </div>
+                    <div class="desk-layout-body customer-desk-layout">
+                        <!-- Left: Large Menu Card Selection -->
+                        <div class="desk-customer-menu-pane">
+                            <header class="desk-cust-header">
+                                <div class="brand-badge">🏡 Anshaisha Home Kitchen</div>
+                                <h2>Fresh, Nutritious Lunch & Dinner &bull; Sai World Empire</h2>
+                                <p>Delicious home-cooked recipes, low oil, and high hygiene made by Meenakashi Raghav.</p>
+                            </header>
+
+                            <div class="desk-food-grid" id="desk-customer-food-grid">
+                                <!-- Dynamic JS Food items -->
+                            </div>
+                        </div>
+
+                        <!-- Right: Shopping Cart and No-Typing Checkout -->
+                        <div class="desk-customer-cart-pane">
+                            <div class="desk-cart-card">
+                                <h3>🛒 Your Cart</h3>
+                                <div class="desk-cart-items-list" id="desk-cart-list">
+                                    <p class="empty-cart-text">Your cart is empty. Add delicious items from the left!</p>
+                                </div>
+
+                                <div class="desk-checkout-address-section">
+                                    <h4>📍 Select Delivery Address</h4>
+                                    
+                                    <div class="tower-selector-desk">
+                                        <span class="sel-label">Tower:</span>
+                                        <div class="btn-group" id="desk-tower-group">
+                                            <button class="btn-select active" onclick="selectDeskTower('Alexander')">Alexander</button>
+                                            <button class="btn-select" onclick="selectDeskTower('Ceaser')">Ceaser</button>
+                                            <button class="btn-select" onclick="selectDeskTower('Napoleon')">Napoleon</button>
+                                        </div>
+                                    </div>
+
+                                    <div class="floor-flat-desk-row">
+                                        <div class="floor-input-col">
+                                            <span class="sel-label">Floor: </span>
+                                            <div class="floor-dual-input-wrapper">
+                                                <input type="range" min="1" max="40" value="22" class="range-slider" id="desk-floor-slider" oninput="updateDeskFloorLabel(this.value)">
+                                                <input type="number" min="1" max="40" value="22" class="typed-num-input" id="desk-floor-typed" oninput="updateDeskFloorTyped(this.value)">
+                                            </div>
+                                        </div>
+                                        <div class="flat-input-col">
+                                            <span class="sel-label">Flat: <strong id="desk-lbl-flat">08</strong></span>
+                                            <div class="flat-grid-mini">
+                                                <button class="flat-btn active" onclick="selectDeskFlat(8)">8</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(1)">1</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(2)">2</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(3)">3</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(4)">4</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(5)">5</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(6)">6</button>
+                                                <button class="flat-btn" onclick="selectDeskFlat(7)">7</button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="generated-address-banner-desk">
+                                        <strong>Delivery Address:</strong>
+                                        <span id="desk-generated-address">Alexander 2208, Sai World Empire, Kharghar</span>
+                                    </div>
+                                </div>
+
+                                <div class="desk-order-payment-box">
+                                    <div class="price-summary-row">
+                                        <span>Total:</span>
+                                        <strong id="desk-cart-total-price">₹0</strong>
+                                    </div>
+                                    <button class="primary-checkout-btn disabled" id="desk-place-order-btn" onclick="placeDeskOrder()">
+                                        💳 Place Order & Pay via UPI QR (30s Order)
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MOCK MODAL: WHATSAPP MENU SHARE PREVIEW -->
+    <div class="modal-overlay hidden" id="whatsapp-share-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>💬 WhatsApp Broadcast Preview</h3>
+                <button class="close-btn" onclick="closeModal('whatsapp-share-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <p>This message will be copied and shared to the <strong>Sai World Empire Tower groups</strong>:</p>
+                <div class="whatsapp-bubble">
+                    <div class="wa-header">Anshaisha Home Cooked Food 🍛</div>
+                    <div class="wa-body" id="whatsapp-msg-content">
+                        *Menu for Saturday, June 20* ☀️ LUNCH<br><br>
+                        🍛 *Veg Thali Combo* - ₹150<br>
+                        🧀 *Paneer Butter Masala* - ₹130<br>
+                        🍲 *Dal Tadka* - ₹100<br><br>
+                        Order Link: https://anshaisha.web.app/order<br>
+                        _Please order by 11:30 AM._
+                    </div>
+                </div>
+                <div class="modal-actions-row">
+                    <button class="secondary-action-btn" onclick="copyWhatsAppMessage()">📋 Copy Message Text</button>
+                    <button class="primary-action-btn" onclick="triggerWhatsAppShareSuccess()">🚀 Share to Tower Groups</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: OUTSTANDING PAYMENT REMINDER -->
+    <div class="modal-overlay hidden" id="payment-reminder-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>💬 Send WhatsApp Payment Reminder</h3>
+                <button class="close-btn" onclick="closeModal('payment-reminder-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <p>Polite WhatsApp reminder for <strong id="rem-cust-name">Ramesh</strong>:</p>
+                <div class="whatsapp-bubble">
+                    <div class="wa-header">Anshaisha Payment Reminder 💰</div>
+                    <div class="wa-body" id="reminder-msg-content">
+                        Hi Ramesh, this is Meenakashi from Anshaisha Home Kitchen. Friendly reminder for the pending payment of *₹320* for your lunch orders. You can pay via UPI to *meenakashi@upi* or cash. Thank you!
+                    </div>
+                </div>
+                <div class="modal-actions-row">
+                    <button class="secondary-action-btn" onclick="closeModal('payment-reminder-modal')">Cancel</button>
+                    <button class="primary-action-btn" onclick="sendReminderWhatsApp()">📱 Send on WhatsApp</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: ANNOUNCEMENT BROADCAST -->
+    <div class="modal-overlay hidden" id="announcement-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>📢 Send Broadcast Announcement</h3>
+                <button class="close-btn" onclick="closeModal('announcement-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Broadcast Message:</label>
+                    <textarea id="announcement-text" placeholder="Type something to show on customer screens (e.g. Special Mango Shrikhand today!)" rows="4"></textarea>
+                </div>
+                <div class="modal-actions-row">
+                    <button class="secondary-action-btn" onclick="closeModal('announcement-modal')">Cancel</button>
+                    <button class="primary-action-btn" onclick="publishAnnouncement()">📢 Broadcast to Customers</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: DECLARE LEAVE -->
+    <div class="modal-overlay hidden" id="leave-modal">
+        <div class="modal-box" style="max-width: 380px;">
+            <div class="modal-header">
+                <h3>📅 Declare Leave Days</h3>
+                <button class="close-btn" onclick="closeModal('leave-modal')">✖</button>
+            </div>
+            <div class="modal-body" style="padding: 12px 16px;">
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">Select days when the kitchen will be closed. Customers will see a friendly banner.</p>
+                
+                <!-- Quick Close Today Switch -->
+                <div class="form-group" style="margin-bottom: 10px; padding: 10px; border-radius: 8px; background: #FFF9F8; border: 1px dashed var(--danger);">
+                    <label style="display:flex; align-items:center; gap:8px; font-weight:700; cursor:pointer; color:var(--danger); font-size:12px;">
+                        <input type="checkbox" id="leave-close-today-checkbox" onchange="toggleKitchenClosedToday(this.checked)">
+                        🛑 Close Kitchen for TODAY Immediately
+                    </label>
+                    <small style="color:var(--text-muted); display:block; margin-left:20px; margin-top:2px; font-size:9.5px; line-height:1.2;">Stop accepting any new order bookings for today.</small>
+                </div>
+                
+                <!-- Selection Mode Tabs -->
+                <div style="display:flex; border: 1px solid var(--app-border); border-radius: 6px; overflow:hidden; margin-bottom:10px; background-color:#f5f5f5;">
+                    <button class="calendar-mode-tab active" id="cal-mode-range" onclick="setLeaveSelectMode('range')">Select Date Range</button>
+                    <button class="calendar-mode-tab" id="cal-mode-multi" onclick="setLeaveSelectMode('multiple')">Select Multiple Specific Dates</button>
+                </div>
+                
+                <!-- Visual Interactive Calendar Widget -->
+                <div class="calendar-widget-container">
+                    <div class="calendar-nav-row">
+                        <button onclick="navigateLeaveCalendar(-1)">◀</button>
+                        <strong id="calendar-month-label">June 2026</strong>
+                        <button onclick="navigateLeaveCalendar(1)">▶</button>
+                    </div>
+                    <div class="calendar-grid-weekdays">
+                        <span>Su</span><span>Mo</span><span>Tu</span><span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
+                    </div>
+                    <div class="calendar-grid-days" id="leave-calendar-grid">
+                        <!-- JS dynamic rendering -->
+                    </div>
+                </div>
+                
+                <!-- Selected Days Summary -->
+                <div style="margin-top: 10px; padding: 6px 8px; border-radius: 6px; background: rgba(0,0,0,0.02); font-size: 11px; border: 1px solid var(--app-border);">
+                    <strong>Leave Dates:</strong> <span id="leave-selected-summary-text" style="color:var(--primary-hover); font-weight:700;">None</span>
+                </div>
+                
+                <div class="form-group" style="margin-top: 10px;">
+                    <label style="font-weight:700;">Reason (shown to customers):</label>
+                    <input type="text" id="leave-reason" placeholder="e.g. Attending family function" value="Kitchen closed for family function" style="font-size:12px; padding:6px 8px;">
+                </div>
+                
+                <div class="modal-actions-row" style="margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--app-border);">
+                    <button class="secondary-action-btn" onclick="closeModal('leave-modal')">Cancel</button>
+                    <button class="primary-action-btn" onclick="saveLeave()">📅 Save Leave & Sync</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: CUSTOMER LIST WITH ANALYTICS -->
+    <div class="modal-overlay hidden" id="customer-list-modal">
+        <div class="modal-box" style="max-width: 400px;">
+            <div class="modal-header">
+                <h3>👥 Customer Database & Analytics</h3>
+                <button class="close-btn" onclick="closeModal('customer-list-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="cust-search-row" style="margin-bottom:10px;">
+                    <input type="text" id="search-customer-input" placeholder="🔍 Search by name or tower..." oninput="filterCustomerList(this.value)">
+                </div>
+                <ul class="cust-db-list" id="modal-customer-list">
+                    <!-- Dynamic rendering with order frequencies, revenues and favorites -->
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: FEEDBACKS -->
+    <div class="modal-overlay hidden" id="feedbacks-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>⭐ Customer Feedback & Ratings</h3>
+                <button class="close-btn" onclick="closeModal('feedbacks-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="feedback-stats">
+                    <div class="rating-box">
+                        <strong>4.8 ★</strong>
+                        <small>Average Rating</small>
+                    </div>
+                    <div class="tag-chips">
+                        <span class="badge green">Delicious Food (12)</span>
+                        <span class="badge green">Fresh & Hot (9)</span>
+                        <span class="badge green">On Time (7)</span>
+                    </div>
+                </div>
+                <div class="feedback-messages-list" id="modal-feedback-list">
+                    <!-- Dynamic rendering -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MOCK MODAL: ADMIN PHONE ORDER IMPERSONATION -->
+    <div class="modal-overlay hidden" id="impersonate-order-modal">
+        <div class="modal-box" style="max-width: 380px;">
+            <div class="modal-header">
+                <h3>📞 Place Phone / WhatsApp Order</h3>
+                <button class="close-btn" onclick="closeModal('impersonate-order-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Select Customer Profile:</label>
+                    <select id="imp-customer-select" onchange="syncImpersonatedCustomerFields(this.value)">
+                        <option value="Amit Sharma">Amit Sharma (Alexander 2208)</option>
+                        <option value="Sonia Kapoor">Sonia Kapoor (Ceaser 1402)</option>
+                        <option value="Rahul Verma">Rahul Verma (Alexander 3106)</option>
+                        <option value="Mrs. Iyer">Mrs. Iyer (Napoleon 1801)</option>
+                        <option value="New Walk-in">➕ Add New / Walk-in Customer...</option>
+                    </select>
+                </div>
+
+                <div id="imp-new-cust-fields" class="hidden" style="border: 1px solid var(--app-border); padding: 8px; border-radius: 8px; background-color: white;">
+                    <div class="form-group">
+                        <small>Customer Name:</small>
+                        <input type="text" id="imp-cust-name" placeholder="Name">
+                    </div>
+                    <div class="form-group" style="margin-top: 4px;">
+                        <small>Tower:</small>
+                        <select id="imp-cust-tower">
+                            <option value="Alexander">Alexander</option>
+                            <option value="Ceaser">Ceaser</option>
+                            <option value="Napoleon">Napoleon</option>
+                        </select>
+                    </div>
+                    <div class="form-group-row" style="margin-top: 4px;">
+                        <div class="form-group" style="flex:1;">
+                            <small>Floor:</small>
+                            <input type="number" id="imp-cust-floor" min="1" max="40" value="1">
+                        </div>
+                        <div class="form-group" style="flex:1;">
+                            <small>Flat:</small>
+                            <input type="number" id="imp-cust-flat" min="1" max="8" value="1">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Order Item:</label>
+                    <div class="imp-items-list" id="imp-menu-items-selection">
+                        <!-- JS dynamic check chips -->
+                    </div>
+                </div>
+
+                <div class="form-group" id="imp-modifiers-box">
+                    <label>Meal Customizations (Optional Add-ons):</label>
+                    <div class="modifiers-list-box" style="display:flex; flex-direction:column; gap:6px; background:white; padding:8px; border-radius: 8px; border:1px solid var(--app-border)">
+                        <label style="font-size:11px;"><input type="checkbox" id="imp-opt-roti" value="Extra Roti" data-price="10" onchange="recalculateImpersonatedTotal()"> Extra Roti (+₹10)</label>
+                        <label style="font-size:11px;"><input type="checkbox" id="imp-opt-norice" value="No Rice" data-price="-20" onchange="recalculateImpersonatedTotal()"> No Rice (-₹20)</label>
+                        <label style="font-size:11px;"><input type="checkbox" id="imp-opt-sabji" value="Extra Sabji" data-price="40" onchange="recalculateImpersonatedTotal()"> Extra Sabji (+₹40)</label>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Admin Order Remarks:</label>
+                    <input type="text" id="imp-order-remark" value="Received order on Phone">
+                </div>
+
+                <div class="summary-total-row" style="background-color: var(--primary-light); padding: 8px; border-radius: 8px;">
+                    <span>Calculated Total:</span>
+                    <strong id="imp-order-total-price">₹200</strong>
+                </div>
+
+                <button class="primary-action-btn" onclick="submitImpersonatedOrder()">
+                    🍲 Confirm & Place Order (1-Tap)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMER CHECKOUT MODAL (FOR MOBILE VIEW) -->
+    <div class="modal-overlay hidden" id="customer-checkout-modal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>💳 Complete Your Order</h3>
+                <button class="close-btn" onclick="closeModal('customer-checkout-modal')">✖</button>
+            </div>
+            <div class="modal-body">
+                <div class="order-summary-box">
+                    <h4>Items in Order:</h4>
+                    <ul id="cust-checkout-items" class="check-items-list">
+                        <!-- Dynamic -->
+                    </ul>
+                    <div class="summary-total-row">
+                        <span>Grand Total:</span>
+                        <strong id="cust-checkout-total">₹150</strong>
+                    </div>
+                </div>
+
+                <div class="address-selector-card">
+                    <h4>📍 Delivery Address</h4>
+                    <div class="tower-selector">
+                        <label>Tower:</label>
+                        <div class="btn-group" id="cust-tower-group">
+                            <button class="btn-select active" onclick="selectCustTower('Alexander')">Alexander</button>
+                            <button class="btn-select" onclick="selectCustTower('Ceaser')">Ceaser</button>
+                            <button class="btn-select" onclick="selectCustTower('Napoleon')">Napoleon</button>
+                        </div>
+                    </div>
+                    <div class="sliders-row-dual">
+                        <div class="dual-field-column">
+                            <label>Floor: </label>
+                            <div class="dual-input-row">
+                                <input type="range" min="1" max="40" value="22" class="range-slider" id="cust-floor-slider" oninput="updateCustFloorLabel(this.value)">
+                                <input type="number" min="1" max="40" value="22" class="floor-text-input" id="cust-floor-typed" oninput="updateCustFloorTyped(this.value)">
+                            </div>
+                        </div>
+                        <div class="flat-selector-mini">
+                            <label>Flat:</label>
+                            <div class="flat-grid-mini">
+                                <button class="flat-btn active" onclick="selectCustFlat(8)">8</button>
+                                <button class="flat-btn" onclick="selectCustFlat(1)">1</button>
+                                <button class="flat-btn" onclick="selectCustFlat(2)">2</button>
+                                <button class="flat-btn" onclick="selectCustFlat(3)">3</button>
+                                <button class="flat-btn" onclick="selectCustFlat(4)">4</button>
+                                <button class="flat-btn" onclick="selectCustFlat(5)">5</button>
+                                <button class="flat-btn" onclick="selectCustFlat(6)">6</button>
+                                <button class="flat-btn" onclick="selectCustFlat(7)">7</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="generated-address-banner">
+                        <strong>Delivering to:</strong>
+                        <span id="cust-generated-address">Alexander 2208</span>
+                    </div>
+                </div>
+
+                <div class="upi-payment-section">
+                    <h4>📲 Pay via UPI (Scan QR or Tap Copy ID)</h4>
+                    <div class="upi-qr-box">
+                        <div class="fake-qr">
+                            <!-- Visual QR design -->
+                            <div class="qr-corners">
+                                <span>🏁</span>
+                                <span>🏁</span>
+                            </div>
+                            <div class="qr-center">💬 UPI: meenakashi@upi</div>
+                            <div class="qr-corners">
+                                <span>🏁</span>
+                                <span>🍲</span>
+                            </div>
+                        </div>
+                        <div class="upi-details">
+                            <p><strong>Payee:</strong> Meenakashi Raghav</p>
+                            <p><strong>UPI ID:</strong> <code>meenakashi@upi</code></p>
+                            <button class="copy-upi-btn" onclick="copyUPI()">📋 Copy UPI ID</button>
+                        </div>
+                    </div>
+                    <label class="payment-check-box">
+                        <input type="checkbox" id="payment-checkbox-confirm">
+                        <span>I have completed the UPI payment of <span id="payment-confirm-amt">₹150</span></span>
+                    </label>
+                </div>
+
+                <button class="primary-action-btn" id="cust-pay-submit-btn" onclick="submitCustOrder()">
+                    🍲 Place Order (Instant Submission)
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST NOTIFICATION CONTAINER -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="app.js?v=3"></script>
+</body>
+</html>
