@@ -182,6 +182,58 @@ const state = {
 const initialBackup = JSON.parse(JSON.stringify(state));
 
 // --------------------------------------------------------------------------
+// BACKEND SYNC AND VIEW REFRESHING LOGIC
+// --------------------------------------------------------------------------
+async function syncStateWithBackend(isAutoInterval = false) {
+    try {
+        const res = await fetch('/api/state');
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        
+        state.kitchenClosedToday = data.kitchenClosedToday;
+        state.menu = data.menu;
+        state.orders = data.orders;
+        state.orderHistory = data.orderHistory;
+        state.payments = data.payments;
+        state.expenses = data.expenses;
+        state.stats = data.stats;
+        state.customersList = data.customersList;
+        state.announcements = data.announcements;
+        state.leave = data.leave;
+
+        refreshActiveView(isAutoInterval);
+    } catch (e) {
+        console.error('Error syncing state:', e);
+    }
+}
+
+function refreshActiveView(isAutoInterval = false) {
+    if (state.currentView === 'admin-mob') {
+        if (state.isAdminUnlocked) {
+            if (state.activeAdminTab === 'dash') renderAdminDashboard();
+            else if (state.activeAdminTab === 'menu') {
+                if (!isAutoInterval) renderAdminMenuBuilder();
+            }
+            else if (state.activeAdminTab === 'orders') renderAdminOrders();
+            else if (state.activeAdminTab === 'payments') renderAdminPayments();
+            else if (state.activeAdminTab === 'finances') renderAdminFinances();
+        }
+    } else if (state.currentView === 'cust-mob') {
+        if (state.isCustomerLoggedIn) {
+            if (state.activeCustTab === 'menu') renderCustomerMenu();
+            else if (state.activeCustTab === 'orders') renderCustomerTracking();
+            else if (state.activeCustTab === 'profile') {
+                if (!isAutoInterval) renderCustomerProfileTab();
+            }
+        }
+    } else if (state.currentView === 'admin-desk') {
+        renderAdminDesktop();
+    } else if (state.currentView === 'cust-desk') {
+        renderCustomerDesktop();
+    }
+}
+
+// --------------------------------------------------------------------------
 // 2. USABILITY TRACKER & METRICS
 // --------------------------------------------------------------------------
 
@@ -505,7 +557,7 @@ function togglePresetChip(checkbox) {
     }
 }
 
-function addCustomDish() {
+async function addCustomDish() {
     trackTap();
     const nameInput = document.getElementById('custom-dish-name');
     const priceInput = document.getElementById('custom-dish-price');
@@ -517,20 +569,23 @@ function addCustomDish() {
         return;
     }
     
-    const newId = state.menu.items.length + 1;
-    state.menu.items.push({
-        id: newId,
-        name: `${name} (Custom)`,
-        price: price,
-        checked: true
-    });
-    
-    renderAdminMenuBuilder();
-    
-    nameInput.value = '';
-    priceInput.value = '';
-    
-    showToast(`🍽️ Added "${name}" to presets!`, 'success');
+    try {
+        const res = await fetch('/api/menu/items/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, price })
+        });
+        if (!res.ok) throw new Error("Failed to add custom dish");
+        
+        await syncStateWithBackend();
+        
+        nameInput.value = '';
+        priceInput.value = '';
+        
+        showToast(`🍽️ Added "${name}" to presets!`, 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function selectGraphicTemplate(card, templateName) {
@@ -540,46 +595,66 @@ function selectGraphicTemplate(card, templateName) {
     state.menu.graphicTemplate = templateName;
 }
 
-function publishDailyMenu() {
+async function publishDailyMenu() {
     trackTap();
     const selectedSession = document.querySelector('input[name="menu-time"]:checked').value;
-    state.menu.session = selectedSession;
-    
-    // Read Editor values
-    state.menu.mealDescription = document.getElementById('complete-meal-desc-input').value.trim();
-    state.menu.addons.roti = parseInt(document.getElementById('rate-extra-roti').value) || 10;
-    state.menu.addons.rice = -(parseInt(document.getElementById('rate-no-rice').value) || 20);
-    state.menu.addons.sabji = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
+    const mealDesc = document.getElementById('complete-meal-desc-input').value.trim();
+    const rotiRate = parseInt(document.getElementById('rate-extra-roti').value) || 10;
+    const riceRate = -(parseInt(document.getElementById('rate-no-rice').value) || 20);
+    const sabjiRate = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
     
     const activeDishes = state.menu.items.filter(item => item.checked);
     if (activeDishes.length === 0) {
         showToast("⚠️ Select at least 1 dish to publish!", "info");
         return;
     }
+
+    const checkedItemIds = activeDishes.map(item => item.id);
     
-    // Compile WhatsApp preview message
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
-    let msg = `*Menu for ${dateStr}* 🍛 *${selectedSession.toUpperCase()} SPECIAL*\n`;
-    msg += `From *Anshaisha Home Cooked Food* 🏡\n\n`;
-    
-    activeDishes.forEach(d => {
-        if (d.isMeal) {
-            msg += `🍱 *${d.name}* - ₹${d.price}\n`;
-            msg += `_(${state.menu.mealDescription})_\n`;
-            msg += `➕ *Custom Add-ons Available:* Extra Roti (+₹${state.menu.addons.roti}), No Rice (-₹${Math.abs(state.menu.addons.rice)}), Extra Sabji (+₹${state.menu.addons.sabji})\n\n`;
-        } else {
-            msg += `🍛 *${d.name.split(' (')[0]}* - ₹${d.price}\n`;
-        }
-    });
-    
-    msg += `🔗 Order in 30 seconds here: https://anshaisha.web.app/order\n`;
-    msg += `_Please order by ${selectedSession === 'Lunch' ? '11:30 AM' : '6:30 PM'}._`;
-    
-    document.getElementById('whatsapp-msg-content').innerHTML = msg.replace(/\n/g, '<br>');
-    
-    // Open Dialog modal
-    openModal('whatsapp-share-modal');
+    try {
+        const res = await fetch('/api/menu/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session: selectedSession,
+                mealDescription: mealDesc,
+                addonRoti: rotiRate,
+                addonRice: riceRate,
+                addonSabji: sabjiRate,
+                checkedItemIds: checkedItemIds
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to publish menu.");
+        
+        await syncStateWithBackend();
+        
+        // Compile WhatsApp preview message
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
+        let msg = `*Menu for ${dateStr}* 🍛 *${selectedSession.toUpperCase()} SPECIAL*\n`;
+        msg += `From *Anshaisha Home Cooked Food* 🏡\n\n`;
+        
+        activeDishes.forEach(d => {
+            if (d.isMeal) {
+                msg += `🍱 *${d.name}* - ₹${d.price}\n`;
+                msg += `_(${state.menu.mealDescription})_\n`;
+                msg += `➕ *Custom Add-ons Available:* Extra Roti (+₹${state.menu.addons.roti}), No Rice (-₹${Math.abs(state.menu.addons.rice)}), Extra Sabji (+₹${state.menu.addons.sabji})\n\n`;
+            } else {
+                msg += `🍛 *${d.name.split(' (')[0]}* - ₹${d.price}\n`;
+            }
+        });
+        
+        msg += `🔗 Order in 30 seconds here: http://localhost:5000/index.html\n`;
+        msg += `_Please order by ${selectedSession === 'Lunch' ? '11:30 AM' : '6:30 PM'}._`;
+        
+        document.getElementById('whatsapp-msg-content').innerHTML = msg.replace(/\n/g, '<br>');
+        
+        // Open Dialog modal
+        openModal('whatsapp-share-modal');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function triggerWhatsAppShareSuccess() {
@@ -806,55 +881,50 @@ function toggleOrderTimeFilter(day) {
     renderAdminOrders();
 }
 
-function acceptOrder(orderId) {
+async function acceptOrder(orderId) {
     startWorkflow('Accept Order');
     
-    const order = state.orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'Preparing';
-        showToast(`👨‍🍳 Cooking started for ${order.customer} (${order.address})`, 'success');
+    try {
+        const res = await fetch(`/api/orders/${orderId}/accept`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to accept order");
         
-        // Immediate UI refresh
-        renderAdminDashboard();
-        renderAdminOrders();
-        
-        // Sync desktop view if active
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
-        
+        await syncStateWithBackend();
+        showToast("👨‍🍳 Cooking started!", 'success');
         completeWorkflow('Order Accepted');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
-function rejectOrder(orderId) {
+async function rejectOrder(orderId) {
     trackTap();
-    state.orders = state.orders.filter(o => o.id !== orderId);
-    showToast("❌ Order cancelled/rejected", "info");
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    try {
+        const res = await fetch(`/api/orders/${orderId}/reject`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to reject order");
+        
+        await syncStateWithBackend();
+        showToast("❌ Order cancelled/rejected", "info");
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
-function deliverOrder(orderId) {
+async function deliverOrder(orderId) {
     trackTap();
-    const order = state.orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'Delivered';
+    try {
+        const res = await fetch(`/api/orders/${orderId}/deliver`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to deliver order");
         
-        // Automatically add order revenue to finance summary
-        state.stats.revenue += order.price;
-        recalculateFinances();
-        
-        showToast(`🛵 Delivered to ${order.address}! Revenue +₹${order.price} recorded.`, 'success');
-        
-        renderAdminDashboard();
-        renderAdminOrders();
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
+        await syncStateWithBackend();
+        showToast("🛵 Food Delivered!", 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -936,7 +1006,7 @@ function recalculateImpersonatedTotal() {
     document.getElementById('imp-order-total-price').textContent = `₹${subtotal}`;
 }
 
-function submitImpersonatedOrder() {
+async function submitImpersonatedOrder() {
     trackTap();
     const selectVal = document.getElementById('imp-customer-select').value;
     const remark = document.getElementById('imp-order-remark').value.trim() || 'Received on Phone';
@@ -988,35 +1058,36 @@ function submitImpersonatedOrder() {
     }
 
     const price = parseInt(document.getElementById('imp-order-total-price').textContent.slice(1));
-    const flatPadded = flat < 10 && !flat.startsWith('0') ? `0${flat}` : flat;
+    const flatPadded = flat < 10 && !flat.toString().startsWith('0') ? `0${flat}` : flat;
     const address = `${tower} ${floor}${flatPadded}`;
 
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: custName,
-        tower: tower,
-        floor: floor,
-        flat: flat,
-        address: address,
-        items: itemsDescription,
-        price: price,
-        status: 'New',
-        time: 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
-        isToday: true,
-        remark: remark
-    };
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: custName,
+                tower: tower,
+                floor: floor.toString(),
+                flat: flat.toString(),
+                address: address,
+                items: itemsDescription,
+                price: price,
+                remark: remark,
+                isToday: true
+            })
+        });
 
-    state.orders.unshift(newOrd);
-    
-    // Sound chime & UI updates
-    playNotificationSound();
-    closeModal('impersonate-order-modal');
-    showToast(`📞 Phone order logged for ${custName} (${address}) successfully!`, 'success');
+        if (!res.ok) throw new Error("Failed to submit impersonated order.");
 
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+        await syncStateWithBackend();
+
+        // Sound chime & UI updates
+        playNotificationSound();
+        closeModal('impersonate-order-modal');
+        showToast(`📞 Phone order logged for ${custName} (${address}) successfully!`, 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1042,7 +1113,7 @@ function setExpenseAmount(val) {
     input.value = current + val;
 }
 
-function submitExpense() {
+async function submitExpense() {
     startWorkflow('Record Expense');
     
     const amountInput = document.getElementById('expense-amount');
@@ -1055,29 +1126,30 @@ function submitExpense() {
         return;
     }
     
-    // Add to state
-    const newId = `EXP-${state.expenses.length + 1}`;
-    state.expenses.push({
-        id: newId,
-        category: selectedExpenseCategory,
-        icon: selectedExpenseIcon,
-        amount: amount,
-        notes: notes
-    });
-    
-    // Subtract from state finance sheet
-    state.stats.expenses += amount;
-    recalculateFinances();
-    
-    // Render outputs
-    renderAdminFinances();
-    
-    amountInput.value = '';
-    notesInput.value = '';
-    
-    showToast(`📉 Cost of ₹${amount} logged for ${selectedExpenseCategory}!`, 'success');
-    
-    completeWorkflow('Record Expense');
+    try {
+        const res = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                category: selectedExpenseCategory,
+                icon: selectedExpenseIcon,
+                amount: amount,
+                notes: notes
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to add expense");
+
+        await syncStateWithBackend();
+
+        amountInput.value = '';
+        notesInput.value = '';
+        
+        showToast(`📉 Cost of ₹${amount} logged for ${selectedExpenseCategory}!`, 'success');
+        completeWorkflow('Record Expense');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function recalculateFinances() {
@@ -1200,31 +1272,20 @@ function sendReminderWhatsApp() {
     showToast(`💬 Reminder message sent to WhatsApp successfully!`, 'success');
 }
 
-function markPaidWorkflow(paymentId) {
+async function markPaidWorkflow(paymentId) {
     startWorkflow('Record Payment');
     
-    const index = state.payments.findIndex(item => item.id === paymentId);
-    if (index !== -1) {
-        const item = state.payments[index];
-        
-        // Remove from list
-        state.payments.splice(index, 1);
-        
-        // Add to active today's revenue
-        state.stats.revenue += item.amount;
-        recalculateFinances();
-        
-        // Re-render
-        renderAdminPayments();
-        
-        // Sync desktop view if active
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
-        
-        showToast(`💰 Payment of ₹${item.amount} recorded for ${item.customer}!`, 'success');
-        
+    try {
+        const res = await fetch(`/api/payments/${paymentId}/pay`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to mark payment as paid");
+
+        await syncStateWithBackend();
+        showToast(`💰 Payment recorded!`, 'success');
         completeWorkflow('Record Payment');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1232,7 +1293,7 @@ function markPaidWorkflow(paymentId) {
 // 9. SIMULATOR TRIGGERS & UTILITIES
 // --------------------------------------------------------------------------
 
-function simulateNewOrder() {
+async function simulateNewOrder() {
     const firstNames = ["Rohan", "Sneha", "Karan", "Pooja", "Vikram", "Dr. Mehta"];
     const flats = ["101", "405", "1208", "2503", "3802", "1104"];
     const towers = ["Alexander", "Ceaser", "Napoleon"];
@@ -1251,69 +1312,66 @@ function simulateNewOrder() {
     const itemStr = items[Math.floor(Math.random() * items.length)];
     const price = prices[Math.floor(Math.random() * prices.length)];
     
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: chosenName,
-        tower: chosenTower,
-        floor: chosenFlat.slice(0, -2) || '02',
-        flat: chosenFlat.slice(-2),
-        address: `${chosenTower} ${chosenFlat}`,
-        items: itemStr,
-        price: price,
-        status: 'New',
-        time: 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
-        isToday: true,
-        remark: 'App Order'
-    };
-    
-    state.orders.unshift(newOrd);
-    
-    playNotificationSound();
-    
-    const banner = document.getElementById('incoming-order-banner');
-    document.getElementById('banner-order-desc').textContent = `${newOrd.address} - ₹${newOrd.price}`;
-    banner.classList.remove('hidden');
-    
-    renderAdminDashboard();
-    renderAdminOrders();
-    
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    const floorStr = chosenFlat.slice(0, -2) || '02';
+    const flatStr = chosenFlat.slice(-2);
+    const address = `${chosenTower} ${chosenFlat}`;
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: chosenName,
+                tower: chosenTower,
+                floor: floorStr,
+                flat: flatStr,
+                address: address,
+                items: itemStr,
+                price: price,
+                remark: 'App Order',
+                isToday: true
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to simulate order.");
+
+        await syncStateWithBackend();
+
+        playNotificationSound();
+        
+        const banner = document.getElementById('incoming-order-banner');
+        if (banner) {
+            document.getElementById('banner-order-desc').textContent = `${address} - ₹${price}`;
+            banner.classList.remove('hidden');
+        }
+        
+        showToast(`🔔 Simulation: New Order from ${address}!`, 'info');
+    } catch (e) {
+        showToast("❌ Error simulating order: " + e.message, "danger");
     }
-    
-    showToast(`🔔 Simulation: New Order from ${newOrd.address}!`, 'info');
 }
 
-function resetPrototypeData() {
-    state.menu = JSON.parse(JSON.stringify(initialBackup.menu));
-    state.orders = JSON.parse(JSON.stringify(initialBackup.orders));
-    state.payments = JSON.parse(JSON.stringify(initialBackup.payments));
-    state.expenses = JSON.parse(JSON.stringify(initialBackup.expenses));
-    state.stats = JSON.parse(JSON.stringify(initialBackup.stats));
-    state.cart = [];
-    state.enteredPin = '';
-    state.usability.taps = 0;
-    state.usability.startTime = null;
-    state.usability.activeWorkflow = null;
-    state.usability.lastReport = '-';
-    
-    document.querySelectorAll('.goals-list li').forEach(li => li.className = '');
-    
-    const tapCountEl = document.getElementById('tap-count');
-    if (tapCountEl) tapCountEl.textContent = '0';
-    const actionTimerEl = document.getElementById('action-timer');
-    if (actionTimerEl) actionTimerEl.textContent = '0.0s';
-    const lastActionEl = document.getElementById('last-action');
-    if (lastActionEl) lastActionEl.textContent = '-';
-    
-    recalculateFinances();
-    showToast("🔄 Prototype data reset to default presets", "info");
-    
-    if (state.currentView === 'admin-mob') {
-        if (state.isAdminUnlocked) adminSwitchTab('dash');
-        else showAdminLoginScreen();
-    } else if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+async function resetPrototypeData() {
+    try {
+        const res = await fetch('/api/reset', {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to reset database");
+
+        await syncStateWithBackend();
+        
+        document.querySelectorAll('.goals-list li').forEach(li => li.className = '');
+        
+        const tapCountEl = document.getElementById('tap-count');
+        if (tapCountEl) tapCountEl.textContent = '0';
+        const actionTimerEl = document.getElementById('action-timer');
+        if (actionTimerEl) actionTimerEl.textContent = '0.0s';
+        const lastActionEl = document.getElementById('last-action');
+        if (lastActionEl) lastActionEl.textContent = '-';
+        
+        showToast("🔄 Prototype data reset to default presets", "info");
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1379,6 +1437,41 @@ function renderCustomerMenu() {
             // If there is an announcement, display it. Otherwise show default open message
             const latestAnnouncement = state.announcements && state.announcements.length > 0 ? state.announcements[0] : `Lunch orders accepted till 11:30 AM. Fresh ingredients only!`;
             bannerEl.innerHTML = `🟢 <strong>Kitchen is OPEN</strong> | 📢 <em>${latestAnnouncement}</em>`;
+        }
+    }
+    
+    const activeOrderContainer = document.getElementById('cust-active-order-container');
+    if (activeOrderContainer) {
+        activeOrderContainer.innerHTML = '';
+        
+        // Find my today's orders
+        const myTodayOrders = state.orders.filter(o => 
+            o.isToday && 
+            (o.customer.toLowerCase() === state.customerProfile.name.toLowerCase() || 
+             (o.tower === state.customerAddress.tower && o.floor === state.customerAddress.floor && o.flat === state.customerAddress.flat))
+        );
+        
+        if (myTodayOrders.length > 0) {
+            myTodayOrders.forEach(order => {
+                let badgeColor = 'var(--primary)';
+                if (order.status === 'Preparing') badgeColor = 'var(--secondary)';
+                if (order.status === 'Delivered') badgeColor = '#795548';
+                
+                const card = document.createElement('div');
+                card.style = "background-color: var(--primary-light); border: 1px solid rgba(245, 124, 0, 0.25); padding: 12px; border-radius: var(--radius-md); margin-top: 10px; display: flex; flex-direction: column; gap: 6px;";
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 11px; font-weight:700; color: var(--primary-hover);">🍛 YOUR ACTIVE ORDER TODAY:</span>
+                        <span style="background-color: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">${order.status}</span>
+                    </div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-main);">${order.items}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 10px; color: var(--text-muted);">
+                        <span>Order: <strong>${order.id}</strong></span>
+                        <span>Total: <strong>₹${order.price}</strong></span>
+                    </div>
+                `;
+                activeOrderContainer.appendChild(card);
+            });
         }
     }
     
@@ -1703,7 +1796,7 @@ function showCheckoutModal() {
     openModal('customer-checkout-modal');
 }
 
-function submitCustOrder() {
+async function submitCustOrder() {
     trackTap();
     const confirmBox = document.getElementById('payment-checkbox-confirm');
     if (!confirmBox.checked) {
@@ -1718,41 +1811,46 @@ function submitCustOrder() {
     const finalAddress = `${state.customerAddress.tower} ${state.customerAddress.floor}${flatPadded}`;
     
     const isTodaySelected = state.customerOrderingDate === 'today';
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: state.customerProfile.name,
-        tower: state.customerAddress.tower,
-        floor: state.customerAddress.floor,
-        flat: state.customerAddress.flat,
-        address: finalAddress,
-        items: state.cart.map(c => `${c.qty}x ${c.name}`).join(', '),
-        price: total,
-        status: 'New',
-        time: isTodaySelected ? 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}) : 'Booked: ' + state.customerSelectedFutureDate,
-        isToday: isTodaySelected,
-        remark: isTodaySelected ? 'Placed on App' : 'Future Booked'
-    };
-    
-    state.orders.unshift(newOrd);
-    
-    // Sound & Toast updates
-    playNotificationSound();
-    
-    const banner = document.getElementById('incoming-order-banner');
-    document.getElementById('banner-order-desc').textContent = `${newOrd.address} - ₹${newOrd.price}`;
-    banner.classList.remove('hidden');
-    
-    state.cart = [];
-    renderCustomerMenu();
-    updateCartFloatBar();
-    
-    custSwitchTab('orders');
-    showToast("🎉 Order placed successfully! Meenakashi has been notified.", "success");
-    
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    const remark = isTodaySelected ? 'Placed on App' : 'Future Booked';
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: state.customerProfile.name,
+                tower: state.customerAddress.tower,
+                floor: state.customerAddress.floor.toString(),
+                flat: state.customerAddress.flat.toString(),
+                address: finalAddress,
+                items: state.cart.map(c => `${c.qty}x ${c.name}`).join(', '),
+                price: total,
+                remark: remark,
+                isToday: isTodaySelected
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to place customer order.");
+
+        await syncStateWithBackend();
+
+        // Sound & Toast updates
+        playNotificationSound();
+        
+        const banner = document.getElementById('incoming-order-banner');
+        if (banner) {
+            document.getElementById('banner-order-desc').textContent = `${finalAddress} - ₹${total}`;
+            banner.classList.remove('hidden');
+        }
+        
+        state.cart = [];
+        renderCustomerMenu();
+        updateCartFloatBar();
+        
+        custSwitchTab('orders');
+        showToast("🎉 Order placed successfully! Meenakashi has been notified.", "success");
+    } catch (e) {
+        showToast("❌ Error placing order: " + e.message, "danger");
     }
 }
 
@@ -1804,10 +1902,45 @@ function syncProfileAddressChange() {
 
 async function saveCustomerProfile() {
     trackTap();
-    state.customerProfile.name = document.getElementById('profile-name').value.trim() || 'Amit Sharma';
-    state.customerProfile.phone = document.getElementById('profile-phone').value.trim() || '9876543210';
+    
+    // Retrieve old phone number before updating state
+    let oldPhone = '';
+    try {
+        const savedProfile = JSON.parse(localStorage.getItem('customerProfile'));
+        oldPhone = savedProfile ? savedProfile.phone : state.customerProfile.phone;
+    } catch (e) {
+        oldPhone = state.customerProfile.phone;
+    }
+    
+    const newName = document.getElementById('profile-name').value.trim() || 'Amit Sharma';
+    const newPhone = document.getElementById('profile-phone').value.trim() || '9876543210';
     
     syncProfileAddressChange();
+    
+    // Send update request to server!
+    try {
+        await fetch('/api/customers/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                oldPhone: oldPhone,
+                newPhone: newPhone,
+                name: newName,
+                tower: state.customerAddress.tower,
+                floor: state.customerAddress.floor.toString(),
+                flat: state.customerAddress.flat.toString()
+            })
+        });
+    } catch (e) {
+        console.error("Failed to update profile on backend", e);
+    }
+    
+    state.customerProfile.name = newName;
+    state.customerProfile.phone = newPhone;
+    
+    // Update localStorage
+    localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
+    localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
 
     // Sync UI elements
     document.getElementById('cust-header-greet').textContent = `Namaste ${state.customerProfile.name}! 👋`;
@@ -2474,30 +2607,55 @@ function renderCustomerListModal() {
         li.style.alignItems = 'stretch';
         li.style.gap = '4px';
 
-        // Check if customer has a PIN configured
-        const hasPinBadge = c.pin ? `<span style="font-size: 8.5px; background: rgba(255, 193, 7, 0.15); color: var(--warning); padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; border: 1px solid rgba(255,193,7,0.3);">🔒 Secured</span>` : '';
-        const resetPinButton = c.pin ? `<button class="ping-btn" style="background: rgba(220, 53, 69, 0.1); color: var(--danger); font-size: 9.5px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(220,53,69,0.2); font-weight: 700; cursor: pointer; margin-right: 4px;" onclick="resetCustomerPin('${c.phone}')">Reset PIN</button>` : '';
+        if (state.editingCustomerPhone === c.phone) {
+            li.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:8px; width:100%; padding: 8px; background: rgba(0,0,0,0.02); border-radius: 8px;">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="edit-cust-name" value="${c.name}" placeholder="Name" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                        <input type="text" id="edit-cust-phone" value="${c.phone}" placeholder="Phone" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <select id="edit-cust-tower" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                            <option value="Alexander" ${c.tower === 'Alexander' ? 'selected' : ''}>Alexander</option>
+                            <option value="Ceaser" ${c.tower === 'Ceaser' ? 'selected' : ''}>Ceaser</option>
+                            <option value="Napoleon" ${c.tower === 'Napoleon' ? 'selected' : ''}>Napoleon</option>
+                        </select>
+                        <input type="number" id="edit-cust-floor" value="${c.floor}" placeholder="Floor" style="width:50px; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                        <input type="number" id="edit-cust-flat" value="${c.flat}" placeholder="Flat" style="width:50px; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+                        <button class="secondary-action-btn" onclick="cancelEditCustomer()" style="padding:4px 8px; font-size:10px; margin:0;">Cancel</button>
+                        <button class="primary-action-btn" onclick="saveCustomerEdit('${c.phone}')" style="padding:4px 8px; font-size:10px; margin:0;">Save</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Check if customer has a PIN configured
+            const hasPinBadge = c.pin ? `<span style="font-size: 8.5px; background: rgba(255, 193, 7, 0.15); color: var(--warning); padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; border: 1px solid rgba(255,193,7,0.3);">🔒 Secured</span>` : '';
+            const resetPinButton = c.pin ? `<button class="ping-btn" style="background: rgba(220, 53, 69, 0.1); color: var(--danger); font-size: 9.5px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(220,53,69,0.2); font-weight: 700; cursor: pointer; margin-right: 4px;" onclick="resetCustomerPin('${c.phone}')">Reset PIN</button>` : '';
 
-        li.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="cust-db-name">
-                    <h5 style="display: flex; align-items: center; margin: 0;">${c.name} ${hasPinBadge}</h5>
-                    <p style="margin: 2px 0 0 0;">🏡 ${c.tower} ${c.floor}${c.flat < 10 && !c.flat.toString().startsWith('0') ? '0'+c.flat : c.flat} &bull; 📱 ${c.phone}</p>
+            li.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="cust-db-name">
+                        <h5 style="display: flex; align-items: center; margin: 0;">${c.name} ${hasPinBadge}</h5>
+                        <p style="margin: 2px 0 0 0;">🏡 ${c.tower} ${c.floor}${c.flat < 10 && !c.flat.toString().startsWith('0') ? '0'+c.flat : c.flat} &bull; 📱 ${c.phone}</p>
+                    </div>
+                    <div class="cust-action-pings" style="display: flex; align-items: center; gap: 4px;">
+                        ${resetPinButton}
+                        <button class="ping-btn" onclick="startEditCustomer('${c.phone}')" style="background: rgba(245, 124, 0, 0.1); color: var(--primary); border: 1px solid rgba(245, 124, 0, 0.2); font-weight: 700;">✏️</button>
+                        <button class="ping-btn" onclick="showToast('Calling ${c.name}...', 'info')">📞</button>
+                        <button class="ping-btn" onclick="showToast('Opening WhatsApp chat...', 'info')">💬</button>
+                    </div>
                 </div>
-                <div class="cust-action-pings" style="display: flex; align-items: center; gap: 4px;">
-                    ${resetPinButton}
-                    <button class="ping-btn" onclick="showToast('Calling ${c.name}...', 'info')">📞</button>
-                    <button class="ping-btn" onclick="showToast('Opening WhatsApp chat...', 'info')">💬</button>
+                
+                <!-- Customer Analytics Panel -->
+                <div class="cust-analytics-box" style="margin-top: 6px;">
+                    <span>Orders: <strong>${c.orders}</strong></span>
+                    <span>Revenue: <strong>₹${c.spent}</strong></span>
+                    <span>Fav: <strong>${c.favorite}</strong></span>
                 </div>
-            </div>
-            
-            <!-- Customer Analytics Panel -->
-            <div class="cust-analytics-box" style="margin-top: 6px;">
-                <span>Orders: <strong>${c.orders}</strong></span>
-                <span>Revenue: <strong>₹${c.spent}</strong></span>
-                <span>Fav: <strong>${c.favorite}</strong></span>
-            </div>
-        `;
+            `;
+        }
         list.appendChild(li);
     });
 }
@@ -2526,6 +2684,59 @@ async function resetCustomerPin(phone) {
     } catch (err) {
         console.error("Error resetting customer PIN:", err);
         showToast("❌ Connection error during PIN reset.", "error");
+    }
+}
+
+function startEditCustomer(phone) {
+    trackTap();
+    state.editingCustomerPhone = phone;
+    renderCustomerListModal();
+}
+
+function cancelEditCustomer() {
+    trackTap();
+    state.editingCustomerPhone = null;
+    renderCustomerListModal();
+}
+
+async function saveCustomerEdit(oldPhone) {
+    trackTap();
+    const name = document.getElementById('edit-cust-name').value.trim();
+    const phone = document.getElementById('edit-cust-phone').value.trim();
+    const tower = document.getElementById('edit-cust-tower').value;
+    const floor = document.getElementById('edit-cust-floor').value.trim();
+    const flat = document.getElementById('edit-cust-flat').value.trim();
+    
+    if (!name || !phone || !floor || !flat) {
+        showToast("⚠️ Please fill all fields.", "error");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/customers/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                oldPhone: oldPhone,
+                newPhone: phone,
+                name: name,
+                tower: tower,
+                floor: floor,
+                flat: flat
+            })
+        });
+        
+        if (res.ok) {
+            showToast("💾 Customer profile updated successfully!", "success");
+            state.editingCustomerPhone = null;
+            await syncStateWithBackend();
+            renderCustomerListModal();
+        } else {
+            showToast("❌ Failed to update customer profile.", "error");
+        }
+    } catch (err) {
+        console.error("Error updating customer profile", err);
+        showToast("❌ Error updating customer profile.", "error");
     }
 }
 
@@ -2913,7 +3124,7 @@ function updateBulkSelectCount() {
     }
 }
 
-function runBulkAction(actionType) {
+async function runBulkAction(actionType) {
     trackTap();
     const checkboxes = document.querySelectorAll('#admin-orders-list .order-bulk-checkbox:checked');
     if (checkboxes.length === 0) {
@@ -2921,43 +3132,30 @@ function runBulkAction(actionType) {
         return;
     }
     
-    let count = 0;
-    checkboxes.forEach(cb => {
-        const orderId = cb.getAttribute('data-order-id');
-        const order = state.orders.find(o => o.id === orderId);
-        if (order) {
-            if (actionType === 'accept' && order.status === 'New') {
-                order.status = 'Preparing';
-                count++;
-            } else if (actionType === 'deliver' && order.status === 'Preparing') {
-                order.status = 'Delivered';
-                count++;
-            } else if (actionType === 'reject' && order.status === 'New') {
-                const idx = state.orders.findIndex(o => o.id === orderId);
-                if (idx !== -1) {
-                    state.orders.splice(idx, 1);
-                    count++;
-                }
-            }
-        }
-    });
+    const orderIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-order-id'));
     
-    if (count > 0) {
-        showToast(`✨ Successfully updated ${count} orders!`, "success");
+    let url = '';
+    if (actionType === 'accept') url = '/api/orders/bulk-accept';
+    else if (actionType === 'deliver') url = '/api/orders/bulk-deliver';
+    else if (actionType === 'reject') url = '/api/orders/bulk-delete';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderIds })
+        });
+        if (!res.ok) throw new Error("Bulk action failed");
+
+        await syncStateWithBackend();
+
+        showToast(`✨ Successfully updated selected orders!`, "success");
         playNotificationSound();
-    } else {
-        showToast("⚠️ No matching status changes could be applied to selected orders.", "info");
-    }
-    
-    // Reset Select All
-    const selectAllCheck = document.getElementById('bulk-select-all-checkbox');
-    if (selectAllCheck) selectAllCheck.checked = false;
-    
-    // Refresh views
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+
+        const selectAllCheck = document.getElementById('bulk-select-all-checkbox');
+        if (selectAllCheck) selectAllCheck.checked = false;
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -2995,7 +3193,7 @@ function updateBulkSelectCountDesk() {
     }
 }
 
-function runBulkActionDesk(actionType) {
+async function runBulkActionDesk(actionType) {
     trackTap();
     const checkboxes = document.querySelectorAll('#desk-dashboard-orders .order-bulk-checkbox-desk:checked');
     if (checkboxes.length === 0) {
@@ -3003,42 +3201,31 @@ function runBulkActionDesk(actionType) {
         return;
     }
     
-    let count = 0;
-    checkboxes.forEach(cb => {
-        const orderId = cb.getAttribute('data-order-id');
-        const order = state.orders.find(o => o.id === orderId);
-        if (order) {
-            if (actionType === 'accept' && order.status === 'New') {
-                order.status = 'Preparing';
-                count++;
-            } else if (actionType === 'deliver' && order.status === 'Preparing') {
-                order.status = 'Delivered';
-                count++;
-            } else if (actionType === 'reject' && order.status === 'New') {
-                const idx = state.orders.findIndex(o => o.id === orderId);
-                if (idx !== -1) {
-                    state.orders.splice(idx, 1);
-                    count++;
-                }
-            }
-        }
-    });
+    const orderIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-order-id'));
     
-    if (count > 0) {
-        showToast(`✨ Successfully updated ${count} orders!`, "success");
+    let url = '';
+    if (actionType === 'accept') url = '/api/orders/bulk-accept';
+    else if (actionType === 'deliver') url = '/api/orders/bulk-deliver';
+    else if (actionType === 'reject') url = '/api/orders/bulk-delete';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderIds })
+        });
+        if (!res.ok) throw new Error("Bulk action failed");
+
+        await syncStateWithBackend();
+
+        showToast(`✨ Successfully updated selected orders!`, "success");
         playNotificationSound();
-    } else {
-        showToast("⚠️ No matching status changes could be applied to selected orders.", "info");
+
+        const selectAllCheck = document.getElementById('bulk-select-all-checkbox-desk');
+        if (selectAllCheck) selectAllCheck.checked = false;
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
-    
-    // Reset Select All
-    const selectAllCheck = document.getElementById('bulk-select-all-checkbox-desk');
-    if (selectAllCheck) selectAllCheck.checked = false;
-    
-    // Refresh views
-    renderAdminDashboard();
-    renderAdminOrders();
-    renderAdminDesktop();
 }
 
 function switchDesktopSubtab(tabName) {
@@ -3207,4 +3394,10 @@ function logoutCustomer() {
     
     showToast("🚪 Logged out successfully", "info");
 }
+
+// Start-up Initial Load
+syncStateWithBackend();
+
+// Poll backend every 5 seconds to load newly placed customer orders
+setInterval(syncStateWithBackend, 5000);
 

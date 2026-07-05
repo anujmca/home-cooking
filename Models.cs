@@ -134,3 +134,4 @@ public record LoginInitRequest(string Phone);
 public record LoginVerifyRequest(string Phone, string? Pin);
 public record SetPinRequest(string Phone, string? Pin);
 public record KitchenToggleRequest(bool IsClosed);
+public record UpdateProfileRequest(string OldPhone, string NewPhone, string Name, string Tower, string Floor, string Flat);

@@ -184,7 +184,7 @@ const initialBackup = JSON.parse(JSON.stringify(state));
 // --------------------------------------------------------------------------
 // BACKEND SYNC AND VIEW REFRESHING LOGIC
 // --------------------------------------------------------------------------
-async function syncStateWithBackend() {
+async function syncStateWithBackend(isAutoInterval = false) {
     try {
         const res = await fetch('/api/state');
         if (!res.ok) throw new Error('API error');
@@ -201,17 +201,19 @@ async function syncStateWithBackend() {
         state.announcements = data.announcements;
         state.leave = data.leave;
 
-        refreshActiveView();
+        refreshActiveView(isAutoInterval);
     } catch (e) {
         console.error('Error syncing state:', e);
     }
 }
 
-function refreshActiveView() {
+function refreshActiveView(isAutoInterval = false) {
     if (state.currentView === 'admin-mob') {
         if (state.isAdminUnlocked) {
             if (state.activeAdminTab === 'dash') renderAdminDashboard();
-            else if (state.activeAdminTab === 'menu') renderAdminMenuBuilder();
+            else if (state.activeAdminTab === 'menu') {
+                if (!isAutoInterval) renderAdminMenuBuilder();
+            }
             else if (state.activeAdminTab === 'orders') renderAdminOrders();
             else if (state.activeAdminTab === 'payments') renderAdminPayments();
             else if (state.activeAdminTab === 'finances') renderAdminFinances();
@@ -220,7 +222,9 @@ function refreshActiveView() {
         if (state.isCustomerLoggedIn) {
             if (state.activeCustTab === 'menu') renderCustomerMenu();
             else if (state.activeCustTab === 'orders') renderCustomerTracking();
-            else if (state.activeCustTab === 'profile') renderCustomerProfileTab();
+            else if (state.activeCustTab === 'profile') {
+                if (!isAutoInterval) renderCustomerProfileTab();
+            }
         }
     } else if (state.currentView === 'admin-desk') {
         renderAdminDesktop();
@@ -1436,6 +1440,41 @@ function renderCustomerMenu() {
         }
     }
     
+    const activeOrderContainer = document.getElementById('cust-active-order-container');
+    if (activeOrderContainer) {
+        activeOrderContainer.innerHTML = '';
+        
+        // Find my today's orders
+        const myTodayOrders = state.orders.filter(o => 
+            o.isToday && 
+            (o.customer.toLowerCase() === state.customerProfile.name.toLowerCase() || 
+             (o.tower === state.customerAddress.tower && o.floor === state.customerAddress.floor && o.flat === state.customerAddress.flat))
+        );
+        
+        if (myTodayOrders.length > 0) {
+            myTodayOrders.forEach(order => {
+                let badgeColor = 'var(--primary)';
+                if (order.status === 'Preparing') badgeColor = 'var(--secondary)';
+                if (order.status === 'Delivered') badgeColor = '#795548';
+                
+                const card = document.createElement('div');
+                card.style = "background-color: var(--primary-light); border: 1px solid rgba(245, 124, 0, 0.25); padding: 12px; border-radius: var(--radius-md); margin-top: 10px; display: flex; flex-direction: column; gap: 6px;";
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="font-size: 11px; font-weight:700; color: var(--primary-hover);">🍛 YOUR ACTIVE ORDER TODAY:</span>
+                        <span style="background-color: ${badgeColor}; color: white; padding: 2px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; text-transform: uppercase;">${order.status}</span>
+                    </div>
+                    <div style="font-size: 12px; font-weight: 600; color: var(--text-main);">${order.items}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; font-size: 10px; color: var(--text-muted);">
+                        <span>Order: <strong>${order.id}</strong></span>
+                        <span>Total: <strong>₹${order.price}</strong></span>
+                    </div>
+                `;
+                activeOrderContainer.appendChild(card);
+            });
+        }
+    }
+    
     if (isClosed) {
         const reason = isTodayClosed ? "Meenakashi has closed the kitchen for today's orders. No more orders will be accepted." : (state.leave.reason || "Kitchen closed for leave.");
         const displayDate = isTodaySelected ? "Today" : new Date(selectedDateStr).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
@@ -1863,10 +1902,45 @@ function syncProfileAddressChange() {
 
 async function saveCustomerProfile() {
     trackTap();
-    state.customerProfile.name = document.getElementById('profile-name').value.trim() || 'Amit Sharma';
-    state.customerProfile.phone = document.getElementById('profile-phone').value.trim() || '9876543210';
+    
+    // Retrieve old phone number before updating state
+    let oldPhone = '';
+    try {
+        const savedProfile = JSON.parse(localStorage.getItem('customerProfile'));
+        oldPhone = savedProfile ? savedProfile.phone : state.customerProfile.phone;
+    } catch (e) {
+        oldPhone = state.customerProfile.phone;
+    }
+    
+    const newName = document.getElementById('profile-name').value.trim() || 'Amit Sharma';
+    const newPhone = document.getElementById('profile-phone').value.trim() || '9876543210';
     
     syncProfileAddressChange();
+    
+    // Send update request to server!
+    try {
+        await fetch('/api/customers/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                oldPhone: oldPhone,
+                newPhone: newPhone,
+                name: newName,
+                tower: state.customerAddress.tower,
+                floor: state.customerAddress.floor.toString(),
+                flat: state.customerAddress.flat.toString()
+            })
+        });
+    } catch (e) {
+        console.error("Failed to update profile on backend", e);
+    }
+    
+    state.customerProfile.name = newName;
+    state.customerProfile.phone = newPhone;
+    
+    // Update localStorage
+    localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
+    localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
 
     // Sync UI elements
     document.getElementById('cust-header-greet').textContent = `Namaste ${state.customerProfile.name}! 👋`;
@@ -2533,30 +2607,55 @@ function renderCustomerListModal() {
         li.style.alignItems = 'stretch';
         li.style.gap = '4px';
 
-        // Check if customer has a PIN configured
-        const hasPinBadge = c.pin ? `<span style="font-size: 8.5px; background: rgba(255, 193, 7, 0.15); color: var(--warning); padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; border: 1px solid rgba(255,193,7,0.3);">🔒 Secured</span>` : '';
-        const resetPinButton = c.pin ? `<button class="ping-btn" style="background: rgba(220, 53, 69, 0.1); color: var(--danger); font-size: 9.5px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(220,53,69,0.2); font-weight: 700; cursor: pointer; margin-right: 4px;" onclick="resetCustomerPin('${c.phone}')">Reset PIN</button>` : '';
+        if (state.editingCustomerPhone === c.phone) {
+            li.innerHTML = `
+                <div style="display:flex; flex-direction:column; gap:8px; width:100%; padding: 8px; background: rgba(0,0,0,0.02); border-radius: 8px;">
+                    <div style="display:flex; gap:8px;">
+                        <input type="text" id="edit-cust-name" value="${c.name}" placeholder="Name" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                        <input type="text" id="edit-cust-phone" value="${c.phone}" placeholder="Phone" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <select id="edit-cust-tower" style="flex:1; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                            <option value="Alexander" ${c.tower === 'Alexander' ? 'selected' : ''}>Alexander</option>
+                            <option value="Ceaser" ${c.tower === 'Ceaser' ? 'selected' : ''}>Ceaser</option>
+                            <option value="Napoleon" ${c.tower === 'Napoleon' ? 'selected' : ''}>Napoleon</option>
+                        </select>
+                        <input type="number" id="edit-cust-floor" value="${c.floor}" placeholder="Floor" style="width:50px; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                        <input type="number" id="edit-cust-flat" value="${c.flat}" placeholder="Flat" style="width:50px; padding:6px; font-size:11px; border-radius:4px; border:1px solid var(--app-border);">
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:4px;">
+                        <button class="secondary-action-btn" onclick="cancelEditCustomer()" style="padding:4px 8px; font-size:10px; margin:0;">Cancel</button>
+                        <button class="primary-action-btn" onclick="saveCustomerEdit('${c.phone}')" style="padding:4px 8px; font-size:10px; margin:0;">Save</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // Check if customer has a PIN configured
+            const hasPinBadge = c.pin ? `<span style="font-size: 8.5px; background: rgba(255, 193, 7, 0.15); color: var(--warning); padding: 2px 6px; border-radius: 4px; font-weight: 700; margin-left: 6px; border: 1px solid rgba(255,193,7,0.3);">🔒 Secured</span>` : '';
+            const resetPinButton = c.pin ? `<button class="ping-btn" style="background: rgba(220, 53, 69, 0.1); color: var(--danger); font-size: 9.5px; padding: 4px 8px; border-radius: 4px; border: 1px solid rgba(220,53,69,0.2); font-weight: 700; cursor: pointer; margin-right: 4px;" onclick="resetCustomerPin('${c.phone}')">Reset PIN</button>` : '';
 
-        li.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <div class="cust-db-name">
-                    <h5 style="display: flex; align-items: center; margin: 0;">${c.name} ${hasPinBadge}</h5>
-                    <p style="margin: 2px 0 0 0;">🏡 ${c.tower} ${c.floor}${c.flat < 10 && !c.flat.toString().startsWith('0') ? '0'+c.flat : c.flat} &bull; 📱 ${c.phone}</p>
+            li.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div class="cust-db-name">
+                        <h5 style="display: flex; align-items: center; margin: 0;">${c.name} ${hasPinBadge}</h5>
+                        <p style="margin: 2px 0 0 0;">🏡 ${c.tower} ${c.floor}${c.flat < 10 && !c.flat.toString().startsWith('0') ? '0'+c.flat : c.flat} &bull; 📱 ${c.phone}</p>
+                    </div>
+                    <div class="cust-action-pings" style="display: flex; align-items: center; gap: 4px;">
+                        ${resetPinButton}
+                        <button class="ping-btn" onclick="startEditCustomer('${c.phone}')" style="background: rgba(245, 124, 0, 0.1); color: var(--primary); border: 1px solid rgba(245, 124, 0, 0.2); font-weight: 700;">✏️</button>
+                        <button class="ping-btn" onclick="showToast('Calling ${c.name}...', 'info')">📞</button>
+                        <button class="ping-btn" onclick="showToast('Opening WhatsApp chat...', 'info')">💬</button>
+                    </div>
                 </div>
-                <div class="cust-action-pings" style="display: flex; align-items: center; gap: 4px;">
-                    ${resetPinButton}
-                    <button class="ping-btn" onclick="showToast('Calling ${c.name}...', 'info')">📞</button>
-                    <button class="ping-btn" onclick="showToast('Opening WhatsApp chat...', 'info')">💬</button>
+                
+                <!-- Customer Analytics Panel -->
+                <div class="cust-analytics-box" style="margin-top: 6px;">
+                    <span>Orders: <strong>${c.orders}</strong></span>
+                    <span>Revenue: <strong>₹${c.spent}</strong></span>
+                    <span>Fav: <strong>${c.favorite}</strong></span>
                 </div>
-            </div>
-            
-            <!-- Customer Analytics Panel -->
-            <div class="cust-analytics-box" style="margin-top: 6px;">
-                <span>Orders: <strong>${c.orders}</strong></span>
-                <span>Revenue: <strong>₹${c.spent}</strong></span>
-                <span>Fav: <strong>${c.favorite}</strong></span>
-            </div>
-        `;
+            `;
+        }
         list.appendChild(li);
     });
 }
@@ -2585,6 +2684,59 @@ async function resetCustomerPin(phone) {
     } catch (err) {
         console.error("Error resetting customer PIN:", err);
         showToast("❌ Connection error during PIN reset.", "error");
+    }
+}
+
+function startEditCustomer(phone) {
+    trackTap();
+    state.editingCustomerPhone = phone;
+    renderCustomerListModal();
+}
+
+function cancelEditCustomer() {
+    trackTap();
+    state.editingCustomerPhone = null;
+    renderCustomerListModal();
+}
+
+async function saveCustomerEdit(oldPhone) {
+    trackTap();
+    const name = document.getElementById('edit-cust-name').value.trim();
+    const phone = document.getElementById('edit-cust-phone').value.trim();
+    const tower = document.getElementById('edit-cust-tower').value;
+    const floor = document.getElementById('edit-cust-floor').value.trim();
+    const flat = document.getElementById('edit-cust-flat').value.trim();
+    
+    if (!name || !phone || !floor || !flat) {
+        showToast("⚠️ Please fill all fields.", "error");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/customers/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                oldPhone: oldPhone,
+                newPhone: phone,
+                name: name,
+                tower: tower,
+                floor: floor,
+                flat: flat
+            })
+        });
+        
+        if (res.ok) {
+            showToast("💾 Customer profile updated successfully!", "success");
+            state.editingCustomerPhone = null;
+            await syncStateWithBackend();
+            renderCustomerListModal();
+        } else {
+            showToast("❌ Failed to update customer profile.", "error");
+        }
+    } catch (err) {
+        console.error("Error updating customer profile", err);
+        showToast("❌ Error updating customer profile.", "error");
     }
 }
 

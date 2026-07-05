@@ -488,6 +488,34 @@ app.MapPost("/api/customers/login/verify", async (LoginVerifyRequest req, Anshai
     return Results.Ok(customer);
 });
 
+app.MapPost("/api/customers/profile/update", async (UpdateProfileRequest req, AnshaishaDbContext db) =>
+{
+    var normalizedOldPhone = req.OldPhone?.Trim();
+    var normalizedNewPhone = req.NewPhone?.Trim();
+    if (string.IsNullOrWhiteSpace(normalizedOldPhone) || string.IsNullOrWhiteSpace(normalizedNewPhone)) 
+        return Results.BadRequest("Invalid phone numbers.");
+
+    var customer = await db.Customers.FirstOrDefaultAsync(c => c.Phone == normalizedOldPhone);
+    if (customer == null)
+    {
+        customer = await db.Customers.FirstOrDefaultAsync(c => c.Phone == normalizedNewPhone);
+        if (customer == null)
+        {
+            customer = new CustomerListItem { Phone = normalizedNewPhone };
+            db.Customers.Add(customer);
+        }
+    }
+
+    customer.Name = req.Name;
+    customer.Phone = normalizedNewPhone;
+    customer.Tower = req.Tower;
+    customer.Floor = req.Floor;
+    customer.Flat = req.Flat;
+
+    await db.SaveChangesAsync();
+    return Results.Ok(customer);
+});
+
 app.MapPost("/api/customers/set-pin", async (SetPinRequest req, AnshaishaDbContext db) =>
 {
     var normalizedPhone = req.Phone?.Trim();
