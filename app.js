@@ -2153,12 +2153,32 @@ function placeDeskOrder() {
 
 function openModal(id) {
     document.getElementById(id).classList.remove('hidden');
+    history.pushState({ type: 'modal', id: id }, '');
 }
 
 function closeModal(id) {
     trackTap();
     document.getElementById(id).classList.add('hidden');
+    if (history.state && history.state.type === 'modal' && history.state.id === id) {
+        history.back();
+    }
 }
+
+window.addEventListener('popstate', (event) => {
+    const openModals = document.querySelectorAll('.modal-overlay:not(.hidden)');
+    if (openModals.length > 0) {
+        openModals.forEach(m => m.classList.add('hidden'));
+        return;
+    }
+    
+    if (state.currentView === 'cust-mob' && state.activeCustTab !== 'menu') {
+        custSwitchTab('menu');
+        history.pushState({ type: 'home' }, '');
+    } else if (state.currentView === 'admin-mob' && state.activeAdminTab !== 'dash') {
+        adminSwitchTab('dash');
+        history.pushState({ type: 'home' }, '');
+    }
+});
 
 function copyWhatsAppMessage() {
     trackTap();
@@ -2545,6 +2565,9 @@ function showToast(message, type = 'info') {
 window.addEventListener('DOMContentLoaded', () => {
     recalculateFinances();
     renderAdminDashboard();
+    
+    // Push initial history state to intercept physical back button
+    history.pushState({ type: 'home' }, '');
     
     // Set dynamic date in header
     const dateEl = document.getElementById('current-app-date');
