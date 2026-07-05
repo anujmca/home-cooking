@@ -385,16 +385,21 @@ function quickLogin() {
 }
 
 function submitPin() {
-    state.isAdminUnlocked = true;
-    showToast("✅ Welcome Back, Meenakashi!", "success");
-    
-    // Switch Screen view
-    document.getElementById('admin-login-screen').classList.remove('active');
-    document.getElementById('admin-app-shell').classList.add('active');
-    
-    // Initial Render
-    recalculateFinances();
-    adminSwitchTab('dash');
+    if (state.enteredPin === '1234') {
+        state.isAdminUnlocked = true;
+        showToast("✅ Welcome Back, Meenakashi!", "success");
+        
+        // Switch Screen view
+        document.getElementById('admin-login-screen').classList.remove('active');
+        document.getElementById('admin-app-shell').classList.add('active');
+        
+        // Initial Render
+        recalculateFinances();
+        adminSwitchTab('dash');
+    } else {
+        showToast("❌ Incorrect PIN. Please try again.", "error");
+        clearPin();
+    }
 }
 
 function adminSwitchTab(tabName) {
@@ -2453,6 +2458,13 @@ window.addEventListener('DOMContentLoaded', () => {
     recalculateFinances();
     renderAdminDashboard();
     
+    // Set dynamic date in header
+    const dateEl = document.getElementById('current-app-date');
+    if (dateEl) {
+        const options = { weekday: 'long', month: 'long', day: 'numeric' };
+        dateEl.textContent = new Date().toLocaleDateString('en-US', options);
+    }
+    
     // Check if URL specifies hiding the simulator sidebar
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('nosim') === 'true' || urlParams.get('embed') === 'true') {
@@ -2466,6 +2478,16 @@ window.addEventListener('DOMContentLoaded', () => {
             quickProfiles.style.display = 'block';
         } else {
             quickProfiles.style.display = 'none';
+        }
+    }
+    
+    // Show/hide admin quick unlock link based on dev mode
+    const adminQuickUnlock = document.getElementById('admin-quick-unlock');
+    if (adminQuickUnlock) {
+        if (urlParams.has('dev')) {
+            adminQuickUnlock.style.display = 'block';
+        } else {
+            adminQuickUnlock.style.display = 'none';
         }
     }
     
