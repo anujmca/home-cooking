@@ -2460,7 +2460,13 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     
     // Check if URL specifies loading in native mode for a specific role
-    const role = urlParams.get('role');
+    let role = urlParams.get('role');
+    
+    // In production, default to customer view without simulation if no role is explicitly set
+    if (!role && !urlParams.has('dev')) {
+        role = 'customer';
+    }
+    
     if (role === 'admin' || role === 'customer') {
         document.body.classList.add('native-device');
         document.body.classList.add('no-sim');
