@@ -138,7 +138,10 @@
                                     <span>Namaste Meenakashi 🙏</span>
                                     <small id="current-app-date">Saturday, June 20</small>
                                 </div>
-                                <div class="header-actions">
+                                <div class="header-actions" style="display: flex; align-items: center; gap: 8px;">
+                                    <div class="notification-badge" onclick="logoutAdmin()" style="cursor: pointer; background: rgba(220,53,69,0.1); border: 1px solid rgba(220,53,69,0.2); padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; color: var(--danger); display: flex; align-items: center; gap: 4px;">
+                                        🔒 Lock
+                                    </div>
                                     <div class="notification-badge" onclick="adminSwitchTab('orders')">
                                         🔔<span class="count-badge" id="order-badge-count">2</span>
                                     </div>

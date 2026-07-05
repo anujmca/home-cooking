@@ -435,6 +435,7 @@ function quickLogin() {
 function submitPin() {
     if (state.enteredPin === '1234') {
         state.isAdminUnlocked = true;
+        localStorage.setItem('adminUnlocked', 'true');
         showToast("✅ Welcome Back, Meenakashi!", "success");
         
         // Switch Screen view
@@ -448,6 +449,14 @@ function submitPin() {
         showToast("❌ Incorrect PIN. Please try again.", "error");
         clearPin();
     }
+}
+
+function logoutAdmin() {
+    trackTap();
+    state.isAdminUnlocked = false;
+    localStorage.removeItem('adminUnlocked');
+    showAdminLoginScreen();
+    showToast("🔒 Admin screen locked.", "info");
 }
 
 function adminSwitchTab(tabName) {
@@ -2550,6 +2559,29 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }
     
+    // Restore session from localStorage if present
+    if (localStorage.getItem('adminUnlocked') === 'true') {
+        state.isAdminUnlocked = true;
+    }
+    if (localStorage.getItem('isCustomerLoggedIn') === 'true') {
+        state.isCustomerLoggedIn = true;
+        try {
+            state.customerProfile = JSON.parse(localStorage.getItem('customerProfile')) || state.customerProfile;
+            state.customerAddress = JSON.parse(localStorage.getItem('customerAddress')) || state.customerAddress;
+            
+            // Update headers and text fields
+            const greetEl = document.getElementById('cust-header-greet');
+            if (greetEl) greetEl.textContent = `Namaste ${state.customerProfile.name}! 👋`;
+            const addrEl = document.getElementById('cust-header-addr');
+            if (addrEl) {
+                const flatPadded = state.customerAddress.flat < 10 && !state.customerAddress.flat.toString().startsWith('0') ? `0${state.customerAddress.flat}` : state.customerAddress.flat;
+                addrEl.textContent = `📍 ${state.customerAddress.tower} ${state.customerAddress.floor}${flatPadded}`;
+            }
+        } catch (err) {
+            console.error("Failed to parse saved session", err);
+        }
+    }
+    
     // Check if URL specifies loading in native mode for a specific role
     let role = urlParams.get('role');
     
@@ -3003,6 +3035,9 @@ async function submitCustomerLogin() {
         if (pinInput) pinInput.value = '';
 
         state.isCustomerLoggedIn = true;
+        localStorage.setItem('isCustomerLoggedIn', 'true');
+        localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
+        localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
         
         // Update headers and text fields
         document.getElementById('cust-header-greet').textContent = `Namaste ${state.customerProfile.name}! 👋`;
@@ -3040,6 +3075,9 @@ function quickCustomerLogin(name, phone, tower, floor, flat) {
     if (phoneInput) phoneInput.value = phone;
 
     state.isCustomerLoggedIn = true;
+    localStorage.setItem('isCustomerLoggedIn', 'true');
+    localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
+    localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
     
     // Update headers and text fields
     document.getElementById('cust-header-greet').textContent = `Namaste ${name}! 👋`;
@@ -3060,6 +3098,10 @@ function logoutCustomer() {
     trackTap();
     state.isCustomerLoggedIn = false;
     state.cart = [];
+    
+    localStorage.removeItem('isCustomerLoggedIn');
+    localStorage.removeItem('customerProfile');
+    localStorage.removeItem('customerAddress');
     
     // Hide app shell, show login screen
     document.getElementById('cust-login-screen').classList.add('active');
