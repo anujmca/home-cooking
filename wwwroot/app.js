@@ -2518,6 +2518,16 @@ window.addEventListener('DOMContentLoaded', () => {
         document.body.classList.add('no-sim');
     }
     
+    // Show/hide simulator quick login profiles based on dev mode
+    const quickProfiles = document.getElementById('cust-login-quick-profiles');
+    if (quickProfiles) {
+        if (urlParams.has('dev')) {
+            quickProfiles.style.display = 'block';
+        } else {
+            quickProfiles.style.display = 'none';
+        }
+    }
+    
     // Check if URL specifies loading in native mode for a specific role
     let role = urlParams.get('role');
     
