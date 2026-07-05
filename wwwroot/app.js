@@ -1460,7 +1460,7 @@ function renderCustomerMenu() {
                     <div class="food-buy-row" style="margin-top: 6px;">
                         <span class="food-price-val" id="cust-price-label-${d.id}">₹${d.price}</span>
                         <div id="buy-control-${d.id}">
-                            <button class="add-cart-btn" onclick="addCustFoodToCart(${d.id})">Add +</button>
+                            <button class="primary-action-btn" onclick="directPlaceOrder(${d.id})" style="padding: 6px 14px; font-size: 11px; font-weight: 700; border-radius: var(--radius-sm); border: none; cursor: pointer; margin: 0; min-width: 100px;">Place Order ➔</button>
                         </div>
                     </div>
                 </div>
@@ -1524,6 +1524,59 @@ function recalculateCustFoodPrice(dishId) {
     }
     
     document.getElementById(`cust-price-label-${dishId}`).textContent = `₹${currentPrice}`;
+}
+
+function directPlaceOrder(dishId) {
+    trackTap();
+    const dish = state.menu.items.find(d => d.id === dishId);
+    if (!dish) return;
+    
+    // Clear cart and prepare 1-item checkout
+    state.cart = [];
+    
+    let finalPrice = dish.price;
+    let nameSuffix = [];
+    
+    // Check modifiers checked
+    if (dish.isMeal) {
+        const optRoti = document.getElementById(`add-opt-roti-${dishId}`);
+        const optRice = document.getElementById(`add-opt-norice-${dishId}`);
+        const optSabji = document.getElementById(`add-opt-sabji-${dishId}`);
+        
+        if (optRoti && optRoti.checked) {
+            finalPrice += state.menu.addons.roti;
+            nameSuffix.push("Extra Roti");
+        }
+        if (optRice && optRice.checked) {
+            finalPrice += state.menu.addons.rice;
+            nameSuffix.push("No Rice");
+        }
+        if (optSabji && optSabji.checked) {
+            finalPrice += state.menu.addons.sabji;
+            nameSuffix.push("Extra Sabji");
+        }
+    }
+    
+    const baseName = dish.isMeal ? `Complete Meal (${state.menu.session})` : dish.name;
+    const finalName = nameSuffix.length > 0 ? `${baseName} (${nameSuffix.join(', ')})` : baseName;
+    
+    state.cart.push({
+        id: dishId,
+        name: finalName,
+        price: finalPrice,
+        qty: 1
+    });
+    
+    // Uncheck boxes in UI
+    if (dish.isMeal) {
+        document.getElementById(`add-opt-roti-${dishId}`).checked = false;
+        document.getElementById(`add-opt-norice-${dishId}`).checked = false;
+        document.getElementById(`add-opt-sabji-${dishId}`).checked = false;
+        recalculateCustFoodPrice(dishId);
+    }
+    
+    // Open checkout modal immediately
+    showCheckoutModal();
 }
 
 function addCustFoodToCart(dishId) {
