@@ -684,6 +684,32 @@ function renderAdminDashboard() {
     listContainer.innerHTML = '';
     newContainer.innerHTML = '';
     
+    // Live update of notification badge, menu summary, and payments alert
+    const newOrdersCount = state.orders.filter(o => o.status === 'New').length;
+    const badgeEl = document.getElementById('order-badge-count');
+    if (badgeEl) badgeEl.textContent = newOrdersCount;
+    
+    const menuSummary = state.menu.items.filter(item => item.checked).map(item => item.name.split(' (')[0]);
+    const menuSummaryEl = document.getElementById('dash-current-menu-summary');
+    if (menuSummaryEl) {
+        menuSummaryEl.textContent = menuSummary.join(', ') || 'No active menu published today';
+    }
+    
+    const unpaidCount = state.payments.length;
+    const unpaidSum = state.payments.reduce((acc, curr) => acc + curr.amount, 0);
+    const alertBanner = document.getElementById('dash-payments-alert');
+    if (alertBanner) {
+        if (unpaidCount === 0) {
+            alertBanner.style.display = 'none';
+        } else {
+            alertBanner.style.display = 'flex';
+            const countEl = document.getElementById('due-count');
+            if (countEl) countEl.textContent = unpaidCount;
+            const amtEl = document.getElementById('due-amount');
+            if (amtEl) amtEl.textContent = `₹${unpaidSum}`;
+        }
+    }
+    
     // Filter out New and Preparing orders for Today
     const newOrders = state.orders.filter(o => o.isToday && o.status === 'New');
     const preparingOrders = state.orders.filter(o => o.isToday && o.status === 'Preparing');
