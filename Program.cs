@@ -80,9 +80,8 @@ app.MapGet("/api/state", async (AnshaishaDbContext db) =>
     var historyOrders = allOrders.Where(o => !o.IsToday).OrderByDescending(o => o.Id).ToList();
 
     // Calculate finances
-    // Revenue = sum of Delivered active orders + sum of Delivered history orders + sum of resolved (paid) payments
-    var revenue = allOrders.Where(o => o.Status == "Delivered").Sum(o => o.Price) 
-                  + await db.Payments.Where(p => p.IsPaid).SumAsync(p => p.Amount);
+    // Today's Sales = sum of all orders placed/scheduled for today
+    var revenue = allOrders.Where(o => o.IsToday).Sum(o => o.Price);
     var totalExpenses = expensesList.Sum(e => e.Amount);
     var netProfit = revenue - totalExpenses;
 
@@ -249,14 +248,17 @@ app.MapPost("/api/orders", async (CreateOrderRequest req, AnshaishaDbContext db)
     var totalOrdersCount = await db.Orders.CountAsync() + 101;
     var orderId = $"ORD-{totalOrdersCount}";
 
+    var (floor, flat) = AddressHelper.ParseFloorAndFlat(req.Floor, req.Flat);
+    var finalAddress = $"{req.Tower} {floor}{flat}";
+
     var newOrder = new Order
     {
         Id = orderId,
         Customer = req.Customer,
         Tower = req.Tower,
-        Floor = req.Floor,
-        Flat = req.Flat,
-        Address = req.Address,
+        Floor = floor,
+        Flat = flat,
+        Address = finalAddress,
         Items = req.Items,
         Price = req.Price,
         Status = "New",
@@ -275,8 +277,8 @@ app.MapPost("/api/orders", async (CreateOrderRequest req, AnshaishaDbContext db)
         {
             Name = req.Customer,
             Tower = req.Tower,
-            Floor = req.Floor,
-            Flat = req.Flat,
+            Floor = floor,
+            Flat = flat,
             Phone = "9876543210", // Default placeholder
             Orders = 1,
             Spent = req.Price,
@@ -506,11 +508,13 @@ app.MapPost("/api/customers/profile/update", async (UpdateProfileRequest req, An
         }
     }
 
+    var (floor, flat) = AddressHelper.ParseFloorAndFlat(req.Floor, req.Flat);
+
     customer.Name = req.Name;
     customer.Phone = normalizedNewPhone;
     customer.Tower = req.Tower;
-    customer.Floor = req.Floor;
-    customer.Flat = req.Flat;
+    customer.Floor = floor;
+    customer.Flat = flat;
 
     await db.SaveChangesAsync();
     return Results.Ok(customer);
@@ -570,3 +574,31 @@ app.MapGet("/admin", (HttpContext context) =>
 });
 
 app.Run();
+
+public static class AddressHelper
+{
+    public static (string Floor, string Flat) ParseFloorAndFlat(string floorInput, string flatInput)
+    {
+        var flatStr = flatInput?.Trim() ?? "";
+        var floorStr = floorInput?.Trim() ?? "";
+
+        if (flatStr.Length == 4 && int.TryParse(flatStr, out _))
+        {
+            floorStr = flatStr.Substring(0, 2);
+            flatStr = flatStr.Substring(2, 2);
+        }
+        else if (flatStr.Length == 3 && int.TryParse(flatStr, out _))
+        {
+            floorStr = flatStr.Substring(0, 1);
+            flatStr = flatStr.Substring(1, 2);
+        }
+
+        // Ensure flat is padded if it's a single digit (e.g. 4 -> 04)
+        if (flatStr.Length == 1 && int.TryParse(flatStr, out int flatNum))
+        {
+            flatStr = $"0{flatNum}";
+        }
+
+        return (floorStr, flatStr);
+    }
+}
