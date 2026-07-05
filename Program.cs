@@ -521,4 +521,10 @@ app.MapPost("/api/customers/reset-pin", async (LoginInitRequest req, AnshaishaDb
     return Results.Ok(new { message = $"Security PIN for {customer.Name} has been cleared successfully." });
 });
 
+app.MapGet("/admin", (HttpContext context) =>
+{
+    context.Response.Redirect("/index.html?role=admin");
+    return Task.CompletedTask;
+});
+
 app.Run();
