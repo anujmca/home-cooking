@@ -133,3 +133,4 @@ public record UpdateAnnouncementRequest(string Message);
 public record LoginInitRequest(string Phone);
 public record LoginVerifyRequest(string Phone, string? Pin);
 public record SetPinRequest(string Phone, string? Pin);
+public record KitchenToggleRequest(bool IsClosed);

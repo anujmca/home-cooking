@@ -151,6 +151,20 @@ app.MapGet("/api/state", async (AnshaishaDbContext db) =>
     });
 });
 
+app.MapPost("/api/kitchen/toggle", async (KitchenToggleRequest req, AnshaishaDbContext db) =>
+{
+    var config = await db.MenuConfigs.FirstOrDefaultAsync();
+    if (config == null)
+    {
+        config = new MenuConfig();
+        db.MenuConfigs.Add(config);
+    }
+
+    config.KitchenClosedToday = req.IsClosed;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "Kitchen status updated.", isClosed = req.IsClosed });
+});
+
 // --------------------------------------------------------------------------
 // 2. API: Reset / Seed Data
 // --------------------------------------------------------------------------

@@ -2727,9 +2727,19 @@ window.addEventListener('DOMContentLoaded', () => {
 // 13. ADDITIONAL WORKFLOWS: KITCHEN TOGGLE & DATE SELECTION
 // --------------------------------------------------------------------------
 
-function toggleKitchenClosedToday(isClosed) {
+async function toggleKitchenClosedToday(isClosed) {
     trackTap();
     state.kitchenClosedToday = isClosed;
+    
+    try {
+        await fetch('/api/kitchen/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isClosed: isClosed })
+        });
+    } catch (e) {
+        console.error("Failed to save kitchen status to server", e);
+    }
 
     // Mobile UI Sync
     const dot = document.getElementById('k-status-indicator-dot');
