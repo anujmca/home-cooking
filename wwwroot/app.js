@@ -182,6 +182,54 @@ const state = {
 const initialBackup = JSON.parse(JSON.stringify(state));
 
 // --------------------------------------------------------------------------
+// BACKEND SYNC AND VIEW REFRESHING LOGIC
+// --------------------------------------------------------------------------
+async function syncStateWithBackend() {
+    try {
+        const res = await fetch('/api/state');
+        if (!res.ok) throw new Error('API error');
+        const data = await res.json();
+        
+        state.kitchenClosedToday = data.kitchenClosedToday;
+        state.menu = data.menu;
+        state.orders = data.orders;
+        state.orderHistory = data.orderHistory;
+        state.payments = data.payments;
+        state.expenses = data.expenses;
+        state.stats = data.stats;
+        state.customersList = data.customersList;
+        state.announcements = data.announcements;
+        state.leave = data.leave;
+
+        refreshActiveView();
+    } catch (e) {
+        console.error('Error syncing state:', e);
+    }
+}
+
+function refreshActiveView() {
+    if (state.currentView === 'admin-mob') {
+        if (state.isAdminUnlocked) {
+            if (state.activeAdminTab === 'dash') renderAdminDashboard();
+            else if (state.activeAdminTab === 'menu') renderAdminMenuBuilder();
+            else if (state.activeAdminTab === 'orders') renderAdminOrders();
+            else if (state.activeAdminTab === 'payments') renderAdminPayments();
+            else if (state.activeAdminTab === 'finances') renderAdminFinances();
+        }
+    } else if (state.currentView === 'cust-mob') {
+        if (state.isCustomerLoggedIn) {
+            if (state.activeCustTab === 'menu') renderCustomerMenu();
+            else if (state.activeCustTab === 'orders') renderCustomerTracking();
+            else if (state.activeCustTab === 'profile') renderCustomerProfileTab();
+        }
+    } else if (state.currentView === 'admin-desk') {
+        renderAdminDesktop();
+    } else if (state.currentView === 'cust-desk') {
+        renderCustomerDesktop();
+    }
+}
+
+// --------------------------------------------------------------------------
 // 2. USABILITY TRACKER & METRICS
 // --------------------------------------------------------------------------
 
@@ -492,7 +540,7 @@ function togglePresetChip(checkbox) {
     }
 }
 
-function addCustomDish() {
+async function addCustomDish() {
     trackTap();
     const nameInput = document.getElementById('custom-dish-name');
     const priceInput = document.getElementById('custom-dish-price');
@@ -504,20 +552,23 @@ function addCustomDish() {
         return;
     }
     
-    const newId = state.menu.items.length + 1;
-    state.menu.items.push({
-        id: newId,
-        name: `${name} (Custom)`,
-        price: price,
-        checked: true
-    });
-    
-    renderAdminMenuBuilder();
-    
-    nameInput.value = '';
-    priceInput.value = '';
-    
-    showToast(`🍽️ Added "${name}" to presets!`, 'success');
+    try {
+        const res = await fetch('/api/menu/items/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, price })
+        });
+        if (!res.ok) throw new Error("Failed to add custom dish");
+        
+        await syncStateWithBackend();
+        
+        nameInput.value = '';
+        priceInput.value = '';
+        
+        showToast(`🍽️ Added "${name}" to presets!`, 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function selectGraphicTemplate(card, templateName) {
@@ -527,46 +578,66 @@ function selectGraphicTemplate(card, templateName) {
     state.menu.graphicTemplate = templateName;
 }
 
-function publishDailyMenu() {
+async function publishDailyMenu() {
     trackTap();
     const selectedSession = document.querySelector('input[name="menu-time"]:checked').value;
-    state.menu.session = selectedSession;
-    
-    // Read Editor values
-    state.menu.mealDescription = document.getElementById('complete-meal-desc-input').value.trim();
-    state.menu.addons.roti = parseInt(document.getElementById('rate-extra-roti').value) || 10;
-    state.menu.addons.rice = -(parseInt(document.getElementById('rate-no-rice').value) || 20);
-    state.menu.addons.sabji = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
+    const mealDesc = document.getElementById('complete-meal-desc-input').value.trim();
+    const rotiRate = parseInt(document.getElementById('rate-extra-roti').value) || 10;
+    const riceRate = -(parseInt(document.getElementById('rate-no-rice').value) || 20);
+    const sabjiRate = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
     
     const activeDishes = state.menu.items.filter(item => item.checked);
     if (activeDishes.length === 0) {
         showToast("⚠️ Select at least 1 dish to publish!", "info");
         return;
     }
+
+    const checkedItemIds = activeDishes.map(item => item.id);
     
-    // Compile WhatsApp preview message
-    const today = new Date();
-    const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
-    let msg = `*Menu for ${dateStr}* 🍛 *${selectedSession.toUpperCase()} SPECIAL*\n`;
-    msg += `From *Anshaisha Home Cooked Food* 🏡\n\n`;
-    
-    activeDishes.forEach(d => {
-        if (d.isMeal) {
-            msg += `🍱 *${d.name}* - ₹${d.price}\n`;
-            msg += `_(${state.menu.mealDescription})_\n`;
-            msg += `➕ *Custom Add-ons Available:* Extra Roti (+₹${state.menu.addons.roti}), No Rice (-₹${Math.abs(state.menu.addons.rice)}), Extra Sabji (+₹${state.menu.addons.sabji})\n\n`;
-        } else {
-            msg += `🍛 *${d.name.split(' (')[0]}* - ₹${d.price}\n`;
-        }
-    });
-    
-    msg += `🔗 Order in 30 seconds here: https://anshaisha.web.app/order\n`;
-    msg += `_Please order by ${selectedSession === 'Lunch' ? '11:30 AM' : '6:30 PM'}._`;
-    
-    document.getElementById('whatsapp-msg-content').innerHTML = msg.replace(/\n/g, '<br>');
-    
-    // Open Dialog modal
-    openModal('whatsapp-share-modal');
+    try {
+        const res = await fetch('/api/menu/publish', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                session: selectedSession,
+                mealDescription: mealDesc,
+                addonRoti: rotiRate,
+                addonRice: riceRate,
+                addonSabji: sabjiRate,
+                checkedItemIds: checkedItemIds
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to publish menu.");
+        
+        await syncStateWithBackend();
+        
+        // Compile WhatsApp preview message
+        const today = new Date();
+        const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
+        let msg = `*Menu for ${dateStr}* 🍛 *${selectedSession.toUpperCase()} SPECIAL*\n`;
+        msg += `From *Anshaisha Home Cooked Food* 🏡\n\n`;
+        
+        activeDishes.forEach(d => {
+            if (d.isMeal) {
+                msg += `🍱 *${d.name}* - ₹${d.price}\n`;
+                msg += `_(${state.menu.mealDescription})_\n`;
+                msg += `➕ *Custom Add-ons Available:* Extra Roti (+₹${state.menu.addons.roti}), No Rice (-₹${Math.abs(state.menu.addons.rice)}), Extra Sabji (+₹${state.menu.addons.sabji})\n\n`;
+            } else {
+                msg += `🍛 *${d.name.split(' (')[0]}* - ₹${d.price}\n`;
+            }
+        });
+        
+        msg += `🔗 Order in 30 seconds here: http://localhost:5000/index.html\n`;
+        msg += `_Please order by ${selectedSession === 'Lunch' ? '11:30 AM' : '6:30 PM'}._`;
+        
+        document.getElementById('whatsapp-msg-content').innerHTML = msg.replace(/\n/g, '<br>');
+        
+        // Open Dialog modal
+        openModal('whatsapp-share-modal');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function triggerWhatsAppShareSuccess() {
@@ -767,55 +838,50 @@ function toggleOrderTimeFilter(day) {
     renderAdminOrders();
 }
 
-function acceptOrder(orderId) {
+async function acceptOrder(orderId) {
     startWorkflow('Accept Order');
     
-    const order = state.orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'Preparing';
-        showToast(`👨‍🍳 Cooking started for ${order.customer} (${order.address})`, 'success');
+    try {
+        const res = await fetch(`/api/orders/${orderId}/accept`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to accept order");
         
-        // Immediate UI refresh
-        renderAdminDashboard();
-        renderAdminOrders();
-        
-        // Sync desktop view if active
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
-        
+        await syncStateWithBackend();
+        showToast("👨‍🍳 Cooking started!", 'success');
         completeWorkflow('Order Accepted');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
-function rejectOrder(orderId) {
+async function rejectOrder(orderId) {
     trackTap();
-    state.orders = state.orders.filter(o => o.id !== orderId);
-    showToast("❌ Order cancelled/rejected", "info");
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    try {
+        const res = await fetch(`/api/orders/${orderId}/reject`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to reject order");
+        
+        await syncStateWithBackend();
+        showToast("❌ Order cancelled/rejected", "info");
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
-function deliverOrder(orderId) {
+async function deliverOrder(orderId) {
     trackTap();
-    const order = state.orders.find(o => o.id === orderId);
-    if (order) {
-        order.status = 'Delivered';
+    try {
+        const res = await fetch(`/api/orders/${orderId}/deliver`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to deliver order");
         
-        // Automatically add order revenue to finance summary
-        state.stats.revenue += order.price;
-        recalculateFinances();
-        
-        showToast(`🛵 Delivered to ${order.address}! Revenue +₹${order.price} recorded.`, 'success');
-        
-        renderAdminDashboard();
-        renderAdminOrders();
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
+        await syncStateWithBackend();
+        showToast("🛵 Food Delivered!", 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -897,7 +963,7 @@ function recalculateImpersonatedTotal() {
     document.getElementById('imp-order-total-price').textContent = `₹${subtotal}`;
 }
 
-function submitImpersonatedOrder() {
+async function submitImpersonatedOrder() {
     trackTap();
     const selectVal = document.getElementById('imp-customer-select').value;
     const remark = document.getElementById('imp-order-remark').value.trim() || 'Received on Phone';
@@ -949,35 +1015,36 @@ function submitImpersonatedOrder() {
     }
 
     const price = parseInt(document.getElementById('imp-order-total-price').textContent.slice(1));
-    const flatPadded = flat < 10 && !flat.startsWith('0') ? `0${flat}` : flat;
+    const flatPadded = flat < 10 && !flat.toString().startsWith('0') ? `0${flat}` : flat;
     const address = `${tower} ${floor}${flatPadded}`;
 
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: custName,
-        tower: tower,
-        floor: floor,
-        flat: flat,
-        address: address,
-        items: itemsDescription,
-        price: price,
-        status: 'New',
-        time: 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
-        isToday: true,
-        remark: remark
-    };
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: custName,
+                tower: tower,
+                floor: floor.toString(),
+                flat: flat.toString(),
+                address: address,
+                items: itemsDescription,
+                price: price,
+                remark: remark,
+                isToday: true
+            })
+        });
 
-    state.orders.unshift(newOrd);
-    
-    // Sound chime & UI updates
-    playNotificationSound();
-    closeModal('impersonate-order-modal');
-    showToast(`📞 Phone order logged for ${custName} (${address}) successfully!`, 'success');
+        if (!res.ok) throw new Error("Failed to submit impersonated order.");
 
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+        await syncStateWithBackend();
+
+        // Sound chime & UI updates
+        playNotificationSound();
+        closeModal('impersonate-order-modal');
+        showToast(`📞 Phone order logged for ${custName} (${address}) successfully!`, 'success');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1003,7 +1070,7 @@ function setExpenseAmount(val) {
     input.value = current + val;
 }
 
-function submitExpense() {
+async function submitExpense() {
     startWorkflow('Record Expense');
     
     const amountInput = document.getElementById('expense-amount');
@@ -1016,29 +1083,30 @@ function submitExpense() {
         return;
     }
     
-    // Add to state
-    const newId = `EXP-${state.expenses.length + 1}`;
-    state.expenses.push({
-        id: newId,
-        category: selectedExpenseCategory,
-        icon: selectedExpenseIcon,
-        amount: amount,
-        notes: notes
-    });
-    
-    // Subtract from state finance sheet
-    state.stats.expenses += amount;
-    recalculateFinances();
-    
-    // Render outputs
-    renderAdminFinances();
-    
-    amountInput.value = '';
-    notesInput.value = '';
-    
-    showToast(`📉 Cost of ₹${amount} logged for ${selectedExpenseCategory}!`, 'success');
-    
-    completeWorkflow('Record Expense');
+    try {
+        const res = await fetch('/api/expenses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                category: selectedExpenseCategory,
+                icon: selectedExpenseIcon,
+                amount: amount,
+                notes: notes
+            })
+        });
+        
+        if (!res.ok) throw new Error("Failed to add expense");
+
+        await syncStateWithBackend();
+
+        amountInput.value = '';
+        notesInput.value = '';
+        
+        showToast(`📉 Cost of ₹${amount} logged for ${selectedExpenseCategory}!`, 'success');
+        completeWorkflow('Record Expense');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
+    }
 }
 
 function recalculateFinances() {
@@ -1161,31 +1229,20 @@ function sendReminderWhatsApp() {
     showToast(`💬 Reminder message sent to WhatsApp successfully!`, 'success');
 }
 
-function markPaidWorkflow(paymentId) {
+async function markPaidWorkflow(paymentId) {
     startWorkflow('Record Payment');
     
-    const index = state.payments.findIndex(item => item.id === paymentId);
-    if (index !== -1) {
-        const item = state.payments[index];
-        
-        // Remove from list
-        state.payments.splice(index, 1);
-        
-        // Add to active today's revenue
-        state.stats.revenue += item.amount;
-        recalculateFinances();
-        
-        // Re-render
-        renderAdminPayments();
-        
-        // Sync desktop view if active
-        if (state.currentView === 'admin-desk') {
-            renderAdminDesktop();
-        }
-        
-        showToast(`💰 Payment of ₹${item.amount} recorded for ${item.customer}!`, 'success');
-        
+    try {
+        const res = await fetch(`/api/payments/${paymentId}/pay`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to mark payment as paid");
+
+        await syncStateWithBackend();
+        showToast(`💰 Payment recorded!`, 'success');
         completeWorkflow('Record Payment');
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1193,7 +1250,7 @@ function markPaidWorkflow(paymentId) {
 // 9. SIMULATOR TRIGGERS & UTILITIES
 // --------------------------------------------------------------------------
 
-function simulateNewOrder() {
+async function simulateNewOrder() {
     const firstNames = ["Rohan", "Sneha", "Karan", "Pooja", "Vikram", "Dr. Mehta"];
     const flats = ["101", "405", "1208", "2503", "3802", "1104"];
     const towers = ["Alexander", "Ceaser", "Napoleon"];
@@ -1212,69 +1269,66 @@ function simulateNewOrder() {
     const itemStr = items[Math.floor(Math.random() * items.length)];
     const price = prices[Math.floor(Math.random() * prices.length)];
     
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: chosenName,
-        tower: chosenTower,
-        floor: chosenFlat.slice(0, -2) || '02',
-        flat: chosenFlat.slice(-2),
-        address: `${chosenTower} ${chosenFlat}`,
-        items: itemStr,
-        price: price,
-        status: 'New',
-        time: 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}),
-        isToday: true,
-        remark: 'App Order'
-    };
-    
-    state.orders.unshift(newOrd);
-    
-    playNotificationSound();
-    
-    const banner = document.getElementById('incoming-order-banner');
-    document.getElementById('banner-order-desc').textContent = `${newOrd.address} - ₹${newOrd.price}`;
-    banner.classList.remove('hidden');
-    
-    renderAdminDashboard();
-    renderAdminOrders();
-    
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    const floorStr = chosenFlat.slice(0, -2) || '02';
+    const flatStr = chosenFlat.slice(-2);
+    const address = `${chosenTower} ${chosenFlat}`;
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: chosenName,
+                tower: chosenTower,
+                floor: floorStr,
+                flat: flatStr,
+                address: address,
+                items: itemStr,
+                price: price,
+                remark: 'App Order',
+                isToday: true
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to simulate order.");
+
+        await syncStateWithBackend();
+
+        playNotificationSound();
+        
+        const banner = document.getElementById('incoming-order-banner');
+        if (banner) {
+            document.getElementById('banner-order-desc').textContent = `${address} - ₹${price}`;
+            banner.classList.remove('hidden');
+        }
+        
+        showToast(`🔔 Simulation: New Order from ${address}!`, 'info');
+    } catch (e) {
+        showToast("❌ Error simulating order: " + e.message, "danger");
     }
-    
-    showToast(`🔔 Simulation: New Order from ${newOrd.address}!`, 'info');
 }
 
-function resetPrototypeData() {
-    state.menu = JSON.parse(JSON.stringify(initialBackup.menu));
-    state.orders = JSON.parse(JSON.stringify(initialBackup.orders));
-    state.payments = JSON.parse(JSON.stringify(initialBackup.payments));
-    state.expenses = JSON.parse(JSON.stringify(initialBackup.expenses));
-    state.stats = JSON.parse(JSON.stringify(initialBackup.stats));
-    state.cart = [];
-    state.enteredPin = '';
-    state.usability.taps = 0;
-    state.usability.startTime = null;
-    state.usability.activeWorkflow = null;
-    state.usability.lastReport = '-';
-    
-    document.querySelectorAll('.goals-list li').forEach(li => li.className = '');
-    
-    const tapCountEl = document.getElementById('tap-count');
-    if (tapCountEl) tapCountEl.textContent = '0';
-    const actionTimerEl = document.getElementById('action-timer');
-    if (actionTimerEl) actionTimerEl.textContent = '0.0s';
-    const lastActionEl = document.getElementById('last-action');
-    if (lastActionEl) lastActionEl.textContent = '-';
-    
-    recalculateFinances();
-    showToast("🔄 Prototype data reset to default presets", "info");
-    
-    if (state.currentView === 'admin-mob') {
-        if (state.isAdminUnlocked) adminSwitchTab('dash');
-        else showAdminLoginScreen();
-    } else if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+async function resetPrototypeData() {
+    try {
+        const res = await fetch('/api/reset', {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to reset database");
+
+        await syncStateWithBackend();
+        
+        document.querySelectorAll('.goals-list li').forEach(li => li.className = '');
+        
+        const tapCountEl = document.getElementById('tap-count');
+        if (tapCountEl) tapCountEl.textContent = '0';
+        const actionTimerEl = document.getElementById('action-timer');
+        if (actionTimerEl) actionTimerEl.textContent = '0.0s';
+        const lastActionEl = document.getElementById('last-action');
+        if (lastActionEl) lastActionEl.textContent = '-';
+        
+        showToast("🔄 Prototype data reset to default presets", "info");
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -1591,7 +1645,7 @@ function showCheckoutModal() {
     openModal('customer-checkout-modal');
 }
 
-function submitCustOrder() {
+async function submitCustOrder() {
     trackTap();
     const confirmBox = document.getElementById('payment-checkbox-confirm');
     if (!confirmBox.checked) {
@@ -1606,41 +1660,46 @@ function submitCustOrder() {
     const finalAddress = `${state.customerAddress.tower} ${state.customerAddress.floor}${flatPadded}`;
     
     const isTodaySelected = state.customerOrderingDate === 'today';
-    const newOrd = {
-        id: `ORD-${state.orders.length + 101}`,
-        customer: state.customerProfile.name,
-        tower: state.customerAddress.tower,
-        floor: state.customerAddress.floor,
-        flat: state.customerAddress.flat,
-        address: finalAddress,
-        items: state.cart.map(c => `${c.qty}x ${c.name}`).join(', '),
-        price: total,
-        status: 'New',
-        time: isTodaySelected ? 'Today, ' + new Date().toLocaleTimeString('en-US', {hour: '2-digit', minute:'2-digit'}) : 'Booked: ' + state.customerSelectedFutureDate,
-        isToday: isTodaySelected,
-        remark: isTodaySelected ? 'Placed on App' : 'Future Booked'
-    };
-    
-    state.orders.unshift(newOrd);
-    
-    // Sound & Toast updates
-    playNotificationSound();
-    
-    const banner = document.getElementById('incoming-order-banner');
-    document.getElementById('banner-order-desc').textContent = `${newOrd.address} - ₹${newOrd.price}`;
-    banner.classList.remove('hidden');
-    
-    state.cart = [];
-    renderCustomerMenu();
-    updateCartFloatBar();
-    
-    custSwitchTab('orders');
-    showToast("🎉 Order placed successfully! Meenakashi has been notified.", "success");
-    
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+    const remark = isTodaySelected ? 'Placed on App' : 'Future Booked';
+
+    try {
+        const res = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                customer: state.customerProfile.name,
+                tower: state.customerAddress.tower,
+                floor: state.customerAddress.floor.toString(),
+                flat: state.customerAddress.flat.toString(),
+                address: finalAddress,
+                items: state.cart.map(c => `${c.qty}x ${c.name}`).join(', '),
+                price: total,
+                remark: remark,
+                isToday: isTodaySelected
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to place customer order.");
+
+        await syncStateWithBackend();
+
+        // Sound & Toast updates
+        playNotificationSound();
+        
+        const banner = document.getElementById('incoming-order-banner');
+        if (banner) {
+            document.getElementById('banner-order-desc').textContent = `${finalAddress} - ₹${total}`;
+            banner.classList.remove('hidden');
+        }
+        
+        state.cart = [];
+        renderCustomerMenu();
+        updateCartFloatBar();
+        
+        custSwitchTab('orders');
+        showToast("🎉 Order placed successfully! Meenakashi has been notified.", "success");
+    } catch (e) {
+        showToast("❌ Error placing order: " + e.message, "danger");
     }
 }
 
@@ -2712,7 +2771,7 @@ function updateBulkSelectCount() {
     }
 }
 
-function runBulkAction(actionType) {
+async function runBulkAction(actionType) {
     trackTap();
     const checkboxes = document.querySelectorAll('#admin-orders-list .order-bulk-checkbox:checked');
     if (checkboxes.length === 0) {
@@ -2720,43 +2779,30 @@ function runBulkAction(actionType) {
         return;
     }
     
-    let count = 0;
-    checkboxes.forEach(cb => {
-        const orderId = cb.getAttribute('data-order-id');
-        const order = state.orders.find(o => o.id === orderId);
-        if (order) {
-            if (actionType === 'accept' && order.status === 'New') {
-                order.status = 'Preparing';
-                count++;
-            } else if (actionType === 'deliver' && order.status === 'Preparing') {
-                order.status = 'Delivered';
-                count++;
-            } else if (actionType === 'reject' && order.status === 'New') {
-                const idx = state.orders.findIndex(o => o.id === orderId);
-                if (idx !== -1) {
-                    state.orders.splice(idx, 1);
-                    count++;
-                }
-            }
-        }
-    });
+    const orderIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-order-id'));
     
-    if (count > 0) {
-        showToast(`✨ Successfully updated ${count} orders!`, "success");
+    let url = '';
+    if (actionType === 'accept') url = '/api/orders/bulk-accept';
+    else if (actionType === 'deliver') url = '/api/orders/bulk-deliver';
+    else if (actionType === 'reject') url = '/api/orders/bulk-delete';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderIds })
+        });
+        if (!res.ok) throw new Error("Bulk action failed");
+
+        await syncStateWithBackend();
+
+        showToast(`✨ Successfully updated selected orders!`, "success");
         playNotificationSound();
-    } else {
-        showToast("⚠️ No matching status changes could be applied to selected orders.", "info");
-    }
-    
-    // Reset Select All
-    const selectAllCheck = document.getElementById('bulk-select-all-checkbox');
-    if (selectAllCheck) selectAllCheck.checked = false;
-    
-    // Refresh views
-    renderAdminDashboard();
-    renderAdminOrders();
-    if (state.currentView === 'admin-desk') {
-        renderAdminDesktop();
+
+        const selectAllCheck = document.getElementById('bulk-select-all-checkbox');
+        if (selectAllCheck) selectAllCheck.checked = false;
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
 }
 
@@ -2794,7 +2840,7 @@ function updateBulkSelectCountDesk() {
     }
 }
 
-function runBulkActionDesk(actionType) {
+async function runBulkActionDesk(actionType) {
     trackTap();
     const checkboxes = document.querySelectorAll('#desk-dashboard-orders .order-bulk-checkbox-desk:checked');
     if (checkboxes.length === 0) {
@@ -2802,42 +2848,31 @@ function runBulkActionDesk(actionType) {
         return;
     }
     
-    let count = 0;
-    checkboxes.forEach(cb => {
-        const orderId = cb.getAttribute('data-order-id');
-        const order = state.orders.find(o => o.id === orderId);
-        if (order) {
-            if (actionType === 'accept' && order.status === 'New') {
-                order.status = 'Preparing';
-                count++;
-            } else if (actionType === 'deliver' && order.status === 'Preparing') {
-                order.status = 'Delivered';
-                count++;
-            } else if (actionType === 'reject' && order.status === 'New') {
-                const idx = state.orders.findIndex(o => o.id === orderId);
-                if (idx !== -1) {
-                    state.orders.splice(idx, 1);
-                    count++;
-                }
-            }
-        }
-    });
+    const orderIds = Array.from(checkboxes).map(cb => cb.getAttribute('data-order-id'));
     
-    if (count > 0) {
-        showToast(`✨ Successfully updated ${count} orders!`, "success");
+    let url = '';
+    if (actionType === 'accept') url = '/api/orders/bulk-accept';
+    else if (actionType === 'deliver') url = '/api/orders/bulk-deliver';
+    else if (actionType === 'reject') url = '/api/orders/bulk-delete';
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderIds })
+        });
+        if (!res.ok) throw new Error("Bulk action failed");
+
+        await syncStateWithBackend();
+
+        showToast(`✨ Successfully updated selected orders!`, "success");
         playNotificationSound();
-    } else {
-        showToast("⚠️ No matching status changes could be applied to selected orders.", "info");
+
+        const selectAllCheck = document.getElementById('bulk-select-all-checkbox-desk');
+        if (selectAllCheck) selectAllCheck.checked = false;
+    } catch (e) {
+        showToast("❌ Error: " + e.message, "danger");
     }
-    
-    // Reset Select All
-    const selectAllCheck = document.getElementById('bulk-select-all-checkbox-desk');
-    if (selectAllCheck) selectAllCheck.checked = false;
-    
-    // Refresh views
-    renderAdminDashboard();
-    renderAdminOrders();
-    renderAdminDesktop();
 }
 
 function switchDesktopSubtab(tabName) {
@@ -2996,4 +3031,10 @@ function logoutCustomer() {
     
     showToast("🚪 Logged out successfully", "info");
 }
+
+// Start-up Initial Load
+syncStateWithBackend();
+
+// Poll backend every 5 seconds to load newly placed customer orders
+setInterval(syncStateWithBackend, 5000);
 
