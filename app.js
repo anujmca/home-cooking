@@ -388,7 +388,6 @@ function submitPin() {
     if (state.enteredPin === '1234') {
         state.isAdminUnlocked = true;
         localStorage.setItem('adminUnlocked', 'true');
-        showToast("✅ Welcome Back, Meenakashi!", "success");
         
         // Switch Screen view
         document.getElementById('admin-login-screen').classList.remove('active');
@@ -1362,8 +1361,28 @@ function renderCustomerMenu() {
     
     const isTodayClosed = isTodaySelected && state.kitchenClosedToday;
     const isLeaveDay = state.leave && state.leave.declared && state.leave.dates && state.leave.dates.includes(selectedDateStr);
+    const isClosed = isTodayClosed || isLeaveDay;
     
-    if (isTodayClosed || isLeaveDay) {
+    // Update Kitchen Status & Announcement Banner dynamically
+    const bannerEl = document.getElementById('announcement-banner-view');
+    if (bannerEl) {
+        if (isClosed) {
+            bannerEl.style.backgroundColor = 'var(--danger-light)';
+            bannerEl.style.borderColor = 'rgba(216, 67, 21, 0.2)';
+            bannerEl.style.color = 'var(--danger)';
+            bannerEl.innerHTML = `🔴 <strong>Kitchen is CLOSED</strong> for ${isTodaySelected ? 'Today' : new Date(selectedDateStr).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'})}. No orders accepted.`;
+        } else {
+            bannerEl.style.backgroundColor = '#E8F5E9'; // light green
+            bannerEl.style.borderColor = '#C8E6C9';
+            bannerEl.style.color = '#2E7D32'; // dark green
+            
+            // If there is an announcement, display it. Otherwise show default open message
+            const latestAnnouncement = state.announcements && state.announcements.length > 0 ? state.announcements[0] : `Lunch orders accepted till 11:30 AM. Fresh ingredients only!`;
+            bannerEl.innerHTML = `🟢 <strong>Kitchen is OPEN</strong> | 📢 <em>${latestAnnouncement}</em>`;
+        }
+    }
+    
+    if (isClosed) {
         const reason = isTodayClosed ? "Meenakashi has closed the kitchen for today's orders. No more orders will be accepted." : (state.leave.reason || "Kitchen closed for leave.");
         const displayDate = isTodaySelected ? "Today" : new Date(selectedDateStr).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
         
