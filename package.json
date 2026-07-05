@@ -1,0 +1,15 @@
+{
+  "name": "anshaisha-home-cooked-food-prototype",
+  "version": "1.0.0",
+  "description": "UX Clickable Prototype for Anshaisha Home Cooked Food",
+  "main": "app.js",
+  "scripts": {
+    "dev": "vite",
+    "start": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^5.2.0"
+  }
+}
