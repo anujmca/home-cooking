@@ -1266,10 +1266,32 @@ function nudgePayment(paymentId) {
     }
 }
 
+function openWhatsAppChat(phone, message = '') {
+    trackTap();
+    let cleanPhone = phone.replace(/\D/g, '');
+    if (cleanPhone.length === 10) {
+        cleanPhone = '91' + cleanPhone;
+    }
+    let url = `https://wa.me/${cleanPhone}`;
+    if (message) {
+        url += `?text=${encodeURIComponent(message)}`;
+    }
+    window.open(url, '_blank');
+}
+
 function sendReminderWhatsApp() {
     trackTap();
     closeModal('payment-reminder-modal');
-    showToast(`💬 Reminder message sent to WhatsApp successfully!`, 'success');
+    
+    const p = state.payments.find(item => item.id === activePaymentReminderId);
+    if (p) {
+        const cust = state.customersList.find(c => c.name === p.customer);
+        const phone = cust ? cust.phone : '9876543210';
+        const text = `Hi ${p.customer}, this is Meenakashi from Anshaisha Home Kitchen. Friendly reminder for the pending payment of *₹${p.amount}* for lunch boxes. You can pay via UPI to *meenakashi@upi* or hand over cash. Thank you!`;
+        
+        openWhatsAppChat(phone, text);
+        showToast(`💬 Opening WhatsApp reminder chat for ${p.customer}...`, 'success');
+    }
 }
 
 async function markPaidWorkflow(paymentId) {
@@ -2643,8 +2665,8 @@ function renderCustomerListModal() {
                     <div class="cust-action-pings" style="display: flex; align-items: center; gap: 4px;">
                         ${resetPinButton}
                         <button class="ping-btn" onclick="startEditCustomer('${c.phone}')" style="background: rgba(245, 124, 0, 0.1); color: var(--primary); border: 1px solid rgba(245, 124, 0, 0.2); font-weight: 700;">✏️</button>
-                        <button class="ping-btn" onclick="showToast('Calling ${c.name}...', 'info')">📞</button>
-                        <button class="ping-btn" onclick="showToast('Opening WhatsApp chat...', 'info')">💬</button>
+                        <button class="ping-btn" onclick="window.location.href='tel:${c.phone}'">📞</button>
+                        <button class="ping-btn" onclick="openWhatsAppChat('${c.phone}')">💬</button>
                     </div>
                 </div>
                 
