@@ -600,7 +600,7 @@ async function publishDailyMenu() {
     const selectedSession = document.querySelector('input[name="menu-time"]:checked').value;
     const mealDesc = document.getElementById('complete-meal-desc-input').value.trim();
     const rotiRate = parseInt(document.getElementById('rate-extra-roti').value) || 10;
-    const riceRate = -(parseInt(document.getElementById('rate-no-rice').value) || 20);
+    const riceRate = -20; // Default flat discount for No Rice
     const sabjiRate = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
     
     const activeDishes = state.menu.items.filter(item => item.checked);
