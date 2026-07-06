@@ -772,6 +772,10 @@ let activeOrderFilter = 'today'; // today | tomorrow | history
 function renderAdminOrders() {
     const listContainer = document.getElementById('admin-orders-list');
     if (!listContainer) return;
+    
+    // Save selected order IDs
+    const checkedIds = Array.from(listContainer.querySelectorAll('.order-bulk-checkbox:checked')).map(cb => cb.getAttribute('data-order-id'));
+    
     listContainer.innerHTML = '';
     
     // Reset Select All
@@ -807,6 +811,13 @@ function renderAdminOrders() {
         const card = createOrderCardElement(o, false);
         listContainer.appendChild(card);
     });
+    
+    // Restore selected checkboxes!
+    checkedIds.forEach(id => {
+        const cb = listContainer.querySelector(`.order-bulk-checkbox[data-order-id="${id}"]`);
+        if (cb) cb.checked = true;
+    });
+    onOrderSelectChange();
 }
 
 function createOrderCardElement(o, isMini = false) {
@@ -2096,6 +2107,10 @@ function submitEmojiFeedback(emoji) {
 function renderAdminDesktop() {
     const tableBody = document.getElementById('desk-dashboard-orders');
     if (!tableBody) return;
+    
+    // Save selected order IDs
+    const checkedIds = Array.from(tableBody.querySelectorAll('.order-bulk-checkbox-desk:checked')).map(cb => cb.getAttribute('data-order-id'));
+    
     tableBody.innerHTML = '';
     
     // Reset Select All and Bulk Actions Bar
@@ -2136,6 +2151,13 @@ function renderAdminDesktop() {
         `;
         tableBody.appendChild(row);
     });
+    
+    // Restore selected checkboxes!
+    checkedIds.forEach(id => {
+        const cb = tableBody.querySelector(`.order-bulk-checkbox-desk[data-order-id="${id}"]`);
+        if (cb) cb.checked = true;
+    });
+    onOrderSelectChangeDesk();
     
     const paymentsList = document.getElementById('desk-dashboard-payments');
     paymentsList.innerHTML = '';
@@ -3421,5 +3443,5 @@ function logoutCustomer() {
 syncStateWithBackend();
 
 // Poll backend every 5 seconds to load newly placed customer orders
-setInterval(syncStateWithBackend, 5000);
+setInterval(() => syncStateWithBackend(true), 5000);
 
