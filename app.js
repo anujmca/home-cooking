@@ -630,8 +630,12 @@ async function publishDailyMenu() {
         await syncStateWithBackend();
         
         // Compile WhatsApp preview message
-        const today = new Date();
-        const dateStr = today.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
+        const isTodaySelected = document.getElementById('menu-date-today').checked;
+        const targetDate = new Date();
+        if (!isTodaySelected) {
+            targetDate.setDate(targetDate.getDate() + 1);
+        }
+        const dateStr = targetDate.toLocaleDateString('en-IN', { weekday: 'long', month: 'short', day: 'numeric' });
         let msg = `*Menu for ${dateStr}* 🍛 *${selectedSession.toUpperCase()} SPECIAL*\n`;
         msg += `From *Anshaisha Home Cooked Food* 🏡\n\n`;
         
@@ -645,7 +649,7 @@ async function publishDailyMenu() {
             }
         });
         
-        msg += `🔗 Order in 30 seconds here: http://localhost:5000/index.html\n`;
+        msg += `🔗 Order in 30 seconds here: ${window.location.origin}/index.html\n`;
         msg += `_Please order by ${selectedSession === 'Lunch' ? '11:30 AM' : '6:30 PM'}._`;
         
         document.getElementById('whatsapp-msg-content').innerHTML = msg.replace(/\n/g, '<br>');
