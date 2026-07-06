@@ -269,17 +269,18 @@ app.MapPost("/api/orders", async (CreateOrderRequest req, AnshaishaDbContext db)
 
     db.Orders.Add(newOrder);
 
-    // Upsert customer list and stats
-    var customer = await db.Customers.FirstOrDefaultAsync(c => c.Name == req.Customer);
+    // Upsert customer list and stats by Phone
+    var normalizedPhone = req.Phone?.Trim() ?? "9876543210";
+    var customer = await db.Customers.FirstOrDefaultAsync(c => c.Phone == normalizedPhone);
     if (customer == null)
     {
         customer = new CustomerListItem
         {
+            Phone = normalizedPhone,
             Name = req.Customer,
             Tower = req.Tower,
             Floor = floor,
             Flat = flat,
-            Phone = "9876543210", // Default placeholder
             Orders = 1,
             Spent = req.Price,
             Favorite = req.Items.Split(',')[0]
@@ -288,6 +289,7 @@ app.MapPost("/api/orders", async (CreateOrderRequest req, AnshaishaDbContext db)
     }
     else
     {
+        customer.Name = req.Customer; // Update name if changed
         customer.Orders += 1;
         customer.Spent += req.Price;
     }

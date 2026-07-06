@@ -72,11 +72,11 @@ public class Expense
 public class CustomerListItem
 {
     [Key]
+    public string Phone { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public string Tower { get; set; } = string.Empty;
     public string Floor { get; set; } = string.Empty;
     public string Flat { get; set; } = string.Empty;
-    public string Phone { get; set; } = string.Empty;
     public int Orders { get; set; }
     public decimal Spent { get; set; }
     public string Favorite { get; set; } = string.Empty;
@@ -112,6 +112,7 @@ public record CustomDishRequest(string Name, decimal Price);
 
 public record CreateOrderRequest(
     string Customer, 
+    string Phone,
     string Tower, 
     string Floor, 
     string Flat, 

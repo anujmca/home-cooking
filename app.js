@@ -1027,12 +1027,14 @@ async function submitImpersonatedOrder() {
     const remark = document.getElementById('imp-order-remark').value.trim() || 'Received on Phone';
     
     let custName = selectVal;
+    let phone = '9876543210';
     let tower = 'Alexander';
     let floor = '22';
     let flat = '08';
     
     if (selectVal === 'New Walk-in') {
         custName = document.getElementById('imp-cust-name').value.trim();
+        phone = document.getElementById('imp-cust-phone').value.trim() || ("9" + Math.floor(100000000 + Math.random() * 900000000).toString());
         tower = document.getElementById('imp-cust-tower').value;
         floor = document.getElementById('imp-cust-floor').value;
         flat = document.getElementById('imp-cust-flat').value;
@@ -1045,6 +1047,7 @@ async function submitImpersonatedOrder() {
         // Fetch values from active customer object
         const c = state.customersList.find(item => item.name === selectVal);
         if (c) {
+            phone = c.phone;
             tower = c.tower;
             floor = c.floor;
             flat = c.flat;
@@ -1082,6 +1085,7 @@ async function submitImpersonatedOrder() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 customer: custName,
+                phone: phone,
                 tower: tower,
                 floor: floor.toString(),
                 flat: flat.toString(),
@@ -1353,12 +1357,15 @@ async function simulateNewOrder() {
     const flatStr = chosenFlat.slice(-2);
     const address = `${chosenTower} ${chosenFlat}`;
 
+    const chosenPhone = "9" + Math.floor(100000000 + Math.random() * 900000000).toString();
+
     try {
         const res = await fetch('/api/orders', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 customer: chosenName,
+                phone: chosenPhone,
                 tower: chosenTower,
                 floor: floorStr,
                 flat: flatStr,
@@ -1856,6 +1863,7 @@ async function submitCustOrder() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 customer: state.customerProfile.name,
+                phone: state.customerProfile.phone,
                 tower: state.customerAddress.tower,
                 floor: state.customerAddress.floor.toString(),
                 flat: state.customerAddress.flat.toString(),
@@ -1979,11 +1987,13 @@ async function saveCustomerProfile() {
     localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
     localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
 
-    // Sync UI elements
+    // Sync UI elements and backend state
     document.getElementById('cust-header-greet').textContent = `Namaste ${state.customerProfile.name}! 👋`;
     
     const flatPadded = state.customerAddress.flat < 10 && !state.customerAddress.flat.toString().startsWith('0') ? `0${state.customerAddress.flat}` : state.customerAddress.flat;
     document.getElementById('cust-header-addr').textContent = `📍 ${state.customerAddress.tower} ${state.customerAddress.floor}${flatPadded}`;
+
+    await syncStateWithBackend();
 
     // Read and save the optional security PIN
     const pinVal = document.getElementById('profile-security-pin').value.trim();
