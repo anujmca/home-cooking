@@ -201,6 +201,11 @@ async function syncStateWithBackend(isAutoInterval = false) {
         state.announcements = data.announcements;
         state.leave = data.leave;
 
+        // Re-render simulator quick profiles list if loaded
+        if (typeof renderQuickProfiles === 'function') {
+            renderQuickProfiles();
+        }
+
         refreshActiveView(isAutoInterval);
     } catch (e) {
         console.error('Error syncing state:', e);
@@ -2890,6 +2895,10 @@ window.addEventListener('DOMContentLoaded', () => {
         custPhoneInput.value = lastPhone || '';
     }
     
+    // Set greeting and render quick login profiles on startup
+    updateLoginScreenGreeting();
+    renderQuickProfiles();
+    
     // Set dynamic date in header
     const dateEl = document.getElementById('current-app-date');
     if (dateEl) {
@@ -3411,8 +3420,10 @@ async function submitCustomerLogin() {
         state.isCustomerLoggedIn = true;
         localStorage.setItem('isCustomerLoggedIn', 'true');
         localStorage.setItem('last_customer_phone', customer.phone);
+        localStorage.setItem('last_customer_name', customer.name);
         localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
         localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
+        updateLoginScreenGreeting();
         
         // Update headers and text fields
         document.getElementById('cust-header-greet').textContent = `Namaste ${state.customerProfile.name}! 👋`;
@@ -3452,8 +3463,10 @@ function quickCustomerLogin(name, phone, tower, floor, flat) {
     state.isCustomerLoggedIn = true;
     localStorage.setItem('isCustomerLoggedIn', 'true');
     localStorage.setItem('last_customer_phone', phone);
+    localStorage.setItem('last_customer_name', name);
     localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
     localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
+    updateLoginScreenGreeting();
     
     // Update headers and text fields
     document.getElementById('cust-header-greet').textContent = `Namaste ${name}! 👋`;
@@ -3479,6 +3492,10 @@ function logoutCustomer() {
     localStorage.removeItem('customerProfile');
     localStorage.removeItem('customerAddress');
     
+    // Refresh greeting and quick profiles list on logout
+    updateLoginScreenGreeting();
+    renderQuickProfiles();
+    
     // Hide app shell, show login screen
     document.getElementById('cust-login-screen').classList.add('active');
     document.getElementById('cust-login-screen').style.display = 'flex';
@@ -3493,4 +3510,39 @@ syncStateWithBackend();
 
 // Poll backend every 5 seconds to load newly placed customer orders
 setInterval(() => syncStateWithBackend(true), 5000);
+
+function updateLoginScreenGreeting() {
+    const greetingEl = document.getElementById('cust-login-welcome-title');
+    if (!greetingEl) return;
+    const lastName = localStorage.getItem('last_customer_name');
+    if (lastName) {
+        greetingEl.textContent = `Welcome back, ${lastName}! 👋`;
+    } else {
+        greetingEl.textContent = 'Welcome Resident! 👋';
+    }
+}
+
+function renderQuickProfiles() {
+    const container = document.getElementById('cust-quick-login-container');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const amit = state.customersList.find(c => c.phone === '9876543210') || { name: 'Amit Sharma', phone: '9876543210', tower: 'Alexander', floor: '22', flat: '08' };
+    const sonia = state.customersList.find(c => c.phone === '9930048123') || { name: 'Sonia Kapoor', phone: '9930048123', tower: 'Ceaser', floor: '14', flat: '02' };
+    
+    const profiles = [amit, sonia];
+    profiles.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'sim-action-btn small';
+        btn.style.cssText = 'padding: 4px 8px; font-size: 9.5px; margin: 0; background: #fff; border: 1px solid var(--app-border); cursor: pointer;';
+        
+        const shortName = p.name.split(' ')[0];
+        const flatPadded = p.flat < 10 && !p.flat.toString().startsWith('0') ? `0${p.flat}` : p.flat;
+        const towerShort = p.tower.substring(0, 4);
+        btn.textContent = `${shortName} (${towerShort} ${p.floor}${flatPadded})`;
+        
+        btn.onclick = () => quickCustomerLogin(p.name, p.phone, p.tower, p.floor, p.flat);
+        container.appendChild(btn);
+    });
+}
 
