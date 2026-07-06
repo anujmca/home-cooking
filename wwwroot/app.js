@@ -2844,6 +2844,20 @@ window.addEventListener('DOMContentLoaded', () => {
     recalculateFinances();
     renderAdminDashboard();
     
+    // Fetch and display app version
+    fetch('/version.txt')
+        .then(res => res.text())
+        .then(ver => {
+            const cleanVer = ver.trim();
+            const sidebarVer = document.getElementById('sidebar-app-version');
+            if (sidebarVer) sidebarVer.textContent = `App Version: v${cleanVer}`;
+            
+            document.querySelectorAll('.app-version-label').forEach(el => {
+                el.textContent = `App Version: v${cleanVer}`;
+            });
+        })
+        .catch(err => console.error("Error loading version.txt:", err));
+    
     // Push initial history state to intercept physical back button
     history.pushState({ type: 'home' }, '');
     
