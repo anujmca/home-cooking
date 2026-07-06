@@ -2873,6 +2873,13 @@ window.addEventListener('DOMContentLoaded', () => {
     // Push initial history state to intercept physical back button
     history.pushState({ type: 'home' }, '');
     
+    // Autofill last used phone number in customer login
+    const lastPhone = localStorage.getItem('last_customer_phone');
+    const custPhoneInput = document.getElementById('cust-login-phone');
+    if (custPhoneInput) {
+        custPhoneInput.value = lastPhone || '';
+    }
+    
     // Set dynamic date in header
     const dateEl = document.getElementById('current-app-date');
     if (dateEl) {
@@ -3393,6 +3400,7 @@ async function submitCustomerLogin() {
 
         state.isCustomerLoggedIn = true;
         localStorage.setItem('isCustomerLoggedIn', 'true');
+        localStorage.setItem('last_customer_phone', customer.phone);
         localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
         localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
         
@@ -3433,6 +3441,7 @@ function quickCustomerLogin(name, phone, tower, floor, flat) {
 
     state.isCustomerLoggedIn = true;
     localStorage.setItem('isCustomerLoggedIn', 'true');
+    localStorage.setItem('last_customer_phone', phone);
     localStorage.setItem('customerProfile', JSON.stringify(state.customerProfile));
     localStorage.setItem('customerAddress', JSON.stringify(state.customerAddress));
     
