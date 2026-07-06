@@ -2844,8 +2844,8 @@ window.addEventListener('DOMContentLoaded', () => {
     recalculateFinances();
     renderAdminDashboard();
     
-    // Fetch and display app version
-    fetch('/version.txt')
+    // Fetch and display app version with cache buster query parameter
+    fetch('/version.txt?t=' + new Date().getTime())
         .then(res => res.text())
         .then(ver => {
             const cleanVer = ver.trim();
@@ -2855,6 +2855,15 @@ window.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.app-version-label').forEach(el => {
                 el.textContent = `App Version: v${cleanVer}`;
             });
+            
+            // Force client-side reload to refresh cache on version update
+            const cachedVer = localStorage.getItem('client_app_version');
+            if (cachedVer && cachedVer !== cleanVer) {
+                localStorage.setItem('client_app_version', cleanVer);
+                window.location.reload(true);
+            } else {
+                localStorage.setItem('client_app_version', cleanVer);
+            }
         })
         .catch(err => console.error("Error loading version.txt:", err));
     
