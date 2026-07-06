@@ -2849,6 +2849,9 @@ window.addEventListener('DOMContentLoaded', () => {
         .then(res => res.text())
         .then(ver => {
             const cleanVer = ver.trim();
+            const headerVer = document.getElementById('header-app-version');
+            if (headerVer) headerVer.textContent = `v${cleanVer}`;
+            
             const sidebarVer = document.getElementById('sidebar-app-version');
             if (sidebarVer) sidebarVer.textContent = `App Version: v${cleanVer}`;
             
