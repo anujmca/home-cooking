@@ -2856,7 +2856,7 @@ window.addEventListener('DOMContentLoaded', () => {
             if (sidebarVer) sidebarVer.textContent = `App Version: v${cleanVer}`;
             
             document.querySelectorAll('.app-version-label').forEach(el => {
-                el.textContent = `App Version: v${cleanVer}`;
+                el.textContent = `v${cleanVer}`;
             });
             
             // Force client-side reload to refresh cache on version update
