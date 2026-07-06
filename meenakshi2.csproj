@@ -13,7 +13,7 @@
   <Target Name="IncrementVersion" BeforeTargets="BeforeBuild">
     <PropertyGroup>
       <VersionFile>version.txt</VersionFile>
-      <CurrentVersion>1.0.0</CurrentVersion>
+      <CurrentVersion>1.0</CurrentVersion>
     </PropertyGroup>
     <ReadLinesFromFile File="$(VersionFile)" ContinueOnError="true">
       <Output TaskParameter="Lines" ItemName="VersionLines" />
@@ -23,10 +23,10 @@
     </PropertyGroup>
     <PropertyGroup>
       <Major>$([System.Text.RegularExpressions.Regex]::Match($(CurrentVersion), `^\d+`).Value)</Major>
-      <Minor>$([System.Text.RegularExpressions.Regex]::Match($(CurrentVersion), `\.\d+\.`).Value.Trim('.'))</Minor>
-      <Build>$([System.Text.RegularExpressions.Regex]::Match($(CurrentVersion), `\d+$`).Value)</Build>
-      <NewBuild>$([MSBuild]::Add($(Build), 1))</NewBuild>
-      <NewVersion>$(Major).$(Minor).$(NewBuild)</NewVersion>
+      <Minor>$([System.Text.RegularExpressions.Regex]::Match($(CurrentVersion), `\d+$`).Value)</Minor>
+      <Minor Condition="'$(Minor)' == ''">0</Minor>
+      <NewMinor>$([MSBuild]::Add($(Minor), 1))</NewMinor>
+      <NewVersion>$(Major).$(NewMinor)</NewVersion>
     </PropertyGroup>
     <WriteLinesToFile File="$(VersionFile)" Lines="$(NewVersion)" Overwrite="true" />
     <WriteLinesToFile File="wwwroot/version.txt" Lines="$(NewVersion)" Overwrite="true" />
