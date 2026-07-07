@@ -3599,3 +3599,68 @@ input:checked + .switch-slider:before {
     z-index: 5;
 }
 
+/* Optimize vertical space in customer mobile view to avoid scroll */
+#cust-phone-screen .app-content-area.customer {
+    padding: 8px 10px 65px 10px;
+    gap: 8px;
+}
+#cust-phone-screen .tab-content {
+    gap: 8px;
+}
+#cust-phone-screen .announcement-banner {
+    padding: 6px 10px;
+    font-size: 11px;
+}
+#cust-phone-screen .cust-date-strip {
+    padding: 4px 2px 6px 2px;
+    margin-bottom: 4px;
+    gap: 6px;
+}
+#cust-phone-screen .cust-date-card {
+    flex: 0 0 48px;
+    padding: 5px 2px;
+    border-radius: 8px;
+}
+#cust-phone-screen .cust-date-card .date-num {
+    font-size: 12px;
+}
+#cust-phone-screen .cust-date-card .date-day {
+    font-size: 7px;
+}
+#cust-phone-screen .cust-date-card .date-status-lbl {
+    font-size: 7px;
+}
+#cust-phone-screen .food-menu-list {
+    gap: 8px;
+}
+#cust-phone-screen .food-item-card {
+    padding: 6px 8px;
+    gap: 8px;
+}
+#cust-phone-screen .food-image-placeholder {
+    width: 50px;
+    height: 50px;
+    font-size: 20px;
+}
+#cust-phone-screen .food-name-row h4 {
+    font-size: 12px;
+}
+#cust-phone-screen .food-desc {
+    font-size: 10px;
+    margin: 2px 0;
+}
+#cust-phone-screen .food-price-row {
+    margin-top: 2px;
+}
+#cust-phone-screen .food-price-row span {
+    font-size: 11.5px;
+}
+#cust-phone-screen .add-btn-mini {
+    padding: 2px 8px;
+    font-size: 10px;
+}
+#cust-phone-screen .menu-session-indicator {
+    margin-top: 0;
+    margin-bottom: 2px;
+}
+

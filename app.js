@@ -3092,7 +3092,130 @@ window.addEventListener('DOMContentLoaded', () => {
             switchView('cust-mob');
         }
     }
+
+    // Enable Pull-to-Refresh on mockup screens
+    enablePullToRefresh('admin-phone-screen', syncStateWithBackend);
+    enablePullToRefresh('cust-phone-screen', syncStateWithBackend);
 });
+
+// --------------------------------------------------------------------------
+// PULL TO REFRESH IMPLEMENTATION
+// --------------------------------------------------------------------------
+function enablePullToRefresh(elementId, refreshCallback) {
+    const el = document.getElementById(elementId);
+    if (!el) return;
+
+    let startY = 0;
+    let currentY = 0;
+    let pulling = false;
+    
+    const ptr = document.createElement('div');
+    ptr.className = 'ptr-indicator';
+    ptr.style = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bg-card);
+        border-bottom: 1px solid var(--app-border);
+        font-size: 11px;
+        font-weight: 700;
+        color: var(--primary);
+        z-index: 1000;
+        transform: translateY(-35px);
+        transition: transform 0.2s ease, opacity 0.2s ease;
+        opacity: 0;
+        pointer-events: none;
+    `;
+    ptr.innerHTML = '⬇&nbsp; Pull to refresh';
+    
+    el.style.position = 'relative';
+    el.appendChild(ptr);
+
+    const onStart = (pageY) => {
+        if (el.scrollTop === 0) {
+            startY = pageY;
+            pulling = true;
+            ptr.style.transition = 'none';
+        }
+    };
+
+    const onMove = (pageY) => {
+        if (!pulling) return;
+        currentY = pageY;
+        const diff = currentY - startY;
+
+        if (diff > 0) {
+            const pullDist = Math.min(diff * 0.4, 55);
+            ptr.style.opacity = Math.min(pullDist / 35, 1);
+            ptr.style.transform = `translateY(${pullDist - 35}px)`;
+            
+            if (pullDist >= 45) {
+                ptr.innerHTML = '🔄&nbsp; Release to refresh';
+            } else {
+                ptr.innerHTML = '⬇&nbsp; Pull to refresh';
+            }
+        }
+    };
+
+    const onEnd = async () => {
+        if (!pulling) return;
+        pulling = false;
+        
+        const diff = currentY - startY;
+        if (diff > 80) {
+            ptr.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+            ptr.style.transform = 'translateY(0)';
+            ptr.innerHTML = '⏳&nbsp; Refreshing...';
+            ptr.style.opacity = '1';
+            
+            try {
+                await refreshCallback();
+                ptr.innerHTML = '✅&nbsp; Done!';
+            } catch (err) {
+                ptr.innerHTML = '❌&nbsp; Failed';
+            }
+            
+            setTimeout(() => {
+                ptr.style.transform = 'translateY(-35px)';
+                ptr.style.opacity = '0';
+            }, 1000);
+        } else {
+            ptr.style.transition = 'transform 0.2s ease, opacity 0.2s ease';
+            ptr.style.transform = 'translateY(-35px)';
+            ptr.style.opacity = '0';
+        }
+        startY = 0;
+        currentY = 0;
+    };
+
+    el.addEventListener('touchstart', (e) => onStart(e.touches[0].pageY), { passive: true });
+    el.addEventListener('touchmove', (e) => onMove(e.touches[0].pageY), { passive: true });
+    el.addEventListener('touchend', onEnd, { passive: true });
+
+    el.addEventListener('mousedown', (e) => {
+        if (el.scrollTop === 0) {
+            onStart(e.pageY);
+            
+            const onMouseMove = (moveEv) => {
+                onMove(moveEv.pageY);
+            };
+            
+            const onMouseUp = () => {
+                onEnd();
+                window.removeEventListener('mousemove', onMouseMove);
+                window.removeEventListener('mouseup', onMouseUp);
+            };
+            
+            window.addEventListener('mousemove', onMouseMove);
+            window.addEventListener('mouseup', onMouseUp);
+        }
+    });
+}
 
 // --------------------------------------------------------------------------
 // 13. ADDITIONAL WORKFLOWS: KITCHEN TOGGLE & DATE SELECTION
