@@ -46,6 +46,7 @@ using (var scope = app.Services.CreateScope())
     {
         _ = db.MenuConfigs.Any();
         _ = db.Customers.Select(c => c.Pin).FirstOrDefault();
+        _ = db.Orders.Select(o => o.IsPaid).FirstOrDefault();
     }
     catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703") // relation or column does not exist
     {
@@ -82,9 +83,13 @@ app.MapGet("/api/state", async (AnshaishaDbContext db, HttpContext context) =>
 
     // Calculate finances
     // Today's Sales = sum of all orders placed/scheduled for today
-    var revenue = allOrders.Where(o => o.IsToday).Sum(o => o.Price);
+    var todayOrdersList = allOrders.Where(o => o.IsToday).ToList();
+    var revenue = todayOrdersList.Sum(o => o.Price);
+    var paidRevenue = todayOrdersList.Where(o => o.IsPaid).Sum(o => o.Price);
+    var pendingRevenue = todayOrdersList.Where(o => !o.IsPaid).Sum(o => o.Price);
     var totalExpenses = expensesList.Sum(e => e.Amount);
-    var netProfit = revenue - totalExpenses;
+    var netProfit = revenue - totalExpenses; // expected profit
+    var actualProfit = paidRevenue - totalExpenses; // actual profit based on received payments
 
     // Parse leave dates
     string[] leaveDates = [];
@@ -124,8 +129,11 @@ app.MapGet("/api/state", async (AnshaishaDbContext db, HttpContext context) =>
         stats = new
         {
             revenue = revenue,
+            paidRevenue = paidRevenue,
+            pendingRevenue = pendingRevenue,
             expenses = totalExpenses,
-            profit = netProfit
+            profit = netProfit,
+            actualProfit = actualProfit
         },
         cart = new List<object>(),
         customerProfile = new
@@ -265,7 +273,8 @@ app.MapPost("/api/orders", async (CreateOrderRequest req, AnshaishaDbContext db)
         Status = "New",
         Time = req.IsToday ? "Today, " + DateTime.Now.ToString("hh:mm tt") : "Booked",
         IsToday = req.IsToday,
-        Remark = req.Remark
+        Remark = req.Remark,
+        IsPaid = req.IsPaid ?? false
     };
 
     db.Orders.Add(newOrder);
@@ -327,6 +336,27 @@ app.MapPost("/api/orders/{id}/reject", async (string id, AnshaishaDbContext db) 
     db.Orders.Remove(order);
     await db.SaveChangesAsync();
     return Results.Ok(new { message = "Order rejected/removed." });
+});
+
+app.MapPost("/api/orders/{id}/pay", async (string id, AnshaishaDbContext db) =>
+{
+    var order = await db.Orders.FindAsync(id);
+    if (order == null) return Results.NotFound();
+
+    order.IsPaid = true;
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "Order payment marked received." });
+});
+
+app.MapPost("/api/orders/bulk-pay", async (BulkOrderRequest req, AnshaishaDbContext db) =>
+{
+    var orders = await db.Orders.Where(o => req.OrderIds.Contains(o.Id)).ToListAsync();
+    foreach (var o in orders)
+    {
+        o.IsPaid = true;
+    }
+    await db.SaveChangesAsync();
+    return Results.Ok(new { message = "Selected orders marked paid." });
 });
 
 // Bulk Orders APIs

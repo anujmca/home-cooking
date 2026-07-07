@@ -42,6 +42,7 @@ public class Order
     public string Time { get; set; } = string.Empty;
     public bool IsToday { get; set; } = true;
     public string Remark { get; set; } = string.Empty;
+    public bool IsPaid { get; set; } = false;
 }
 
 public class Payment
@@ -120,7 +121,8 @@ public record CreateOrderRequest(
     string Items, 
     decimal Price, 
     string Remark,
-    bool IsToday
+    bool IsToday,
+    bool? IsPaid = false
 );
 
 public record BulkOrderRequest(System.Collections.Generic.List<string> OrderIds);

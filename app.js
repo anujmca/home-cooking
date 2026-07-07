@@ -751,6 +751,10 @@ function createOrderCardElement(o, isMini = false) {
     
     let statusClass = o.status === 'New' ? 'new' : o.status === 'Preparing' ? 'prep' : 'done';
     
+    let payStatusHtml = o.isPaid 
+        ? `<span class="order-status-badge prep" style="background-color: var(--success-light); color: var(--success); border-color: rgba(46,125,50,0.2); margin-left: 6px; font-weight: 700;">💳 Paid</span>`
+        : `<span class="order-status-badge reject" style="background-color: var(--danger-light); color: var(--danger); border-color: rgba(216,67,21,0.2); margin-left: 6px; font-weight: 700;">⚠️ Pending</span>`;
+
     let checkboxHtml = '';
     if (!isMini) {
         checkboxHtml = `
@@ -761,6 +765,7 @@ function createOrderCardElement(o, isMini = false) {
     card.innerHTML = `
         ${checkboxHtml}
         <span class="order-status-badge ${statusClass}">${o.status}</span>
+        ${payStatusHtml}
         <div class="order-header-row">
             <div class="order-cust-info">
                 <h4>👤 ${o.customer}</h4>
@@ -779,26 +784,57 @@ function createOrderCardElement(o, isMini = false) {
     
     const actionsBox = card.querySelector(`#actions-${o.id}`);
     
+    let payActionHtml = '';
+    if (!o.isPaid) {
+        payActionHtml = `<button class="card-btn accept" style="background-color: #2E7D32; border-color: #2E7D32; color: white;" onclick="payOrder('${o.id}')">💰 Mark Paid</button>`;
+    }
+
     if (o.status === 'New') {
         actionsBox.innerHTML = `
             <button class="card-btn reject" onclick="rejectOrder('${o.id}')">Reject</button>
             <button class="card-btn accept" onclick="acceptOrder('${o.id}')">Accept Order (1-Tap)</button>
+            ${payActionHtml}
         `;
     } else if (o.status === 'Preparing') {
         actionsBox.innerHTML = `
             <button class="card-btn secondary" style="flex:2;" onclick="deliverOrder('${o.id}')">
                 🛵 Mark Prepared & Delivered (1-Tap)
             </button>
+            ${payActionHtml}
         `;
     } else {
-        actionsBox.innerHTML = `
-            <span class="green-success-tick" style="font-size: 11px; font-weight:700; color:var(--secondary); padding: 4px;">
-                ✅ Food Delivered & Payment Complete
-            </span>
-        `;
+        if (!o.isPaid) {
+            actionsBox.innerHTML = `
+                <span class="green-success-tick" style="font-size: 11px; font-weight:700; color:var(--secondary); padding: 4px; flex: 1;">
+                    ✅ Food Delivered
+                </span>
+                ${payActionHtml}
+            `;
+        } else {
+            actionsBox.innerHTML = `
+                <span class="green-success-tick" style="font-size: 11px; font-weight:700; color:var(--secondary); padding: 4px;">
+                    ✅ Food Delivered & Payment Complete
+                </span>
+            `;
+        }
     }
     
     return card;
+}
+
+async function payOrder(orderId) {
+    trackTap();
+    try {
+        const res = await fetch(`/api/orders/${orderId}/pay`, {
+            method: 'POST'
+        });
+        if (!res.ok) throw new Error("Failed to mark order as paid");
+        
+        await syncStateWithBackend();
+        showToast(`💰 Payment received for Order ${orderId}`, "success");
+    } catch (e) {
+        showToast("❌ Error marking paid: " + e.message, "danger");
+    }
 }
 
 function toggleOrderTimeFilter(day) {
@@ -1095,6 +1131,9 @@ async function submitExpense() {
 function recalculateFinances() {
     // Profit = Revenue - Expenses
     state.stats.profit = state.stats.revenue - state.stats.expenses;
+    state.stats.paidRevenue = state.stats.paidRevenue || 0;
+    state.stats.pendingRevenue = state.stats.pendingRevenue || 0;
+    state.stats.actualProfit = state.stats.actualProfit !== undefined ? state.stats.actualProfit : (state.stats.paidRevenue - state.stats.expenses);
     
     // Update mobile widgets
     document.getElementById('dash-rev').textContent = `₹${state.stats.revenue}`;
@@ -1113,6 +1152,20 @@ function recalculateFinances() {
     document.getElementById('fin-expenses').textContent = `₹${state.stats.expenses}`;
     document.getElementById('fin-netprofit').textContent = `₹${state.stats.profit}`;
     
+    const finPaidRev = document.getElementById('fin-paid-rev');
+    if (finPaidRev) finPaidRev.textContent = `₹${state.stats.paidRevenue}`;
+    const finPendingRev = document.getElementById('fin-pending-rev');
+    if (finPendingRev) finPendingRev.textContent = `₹${state.stats.pendingRevenue}`;
+    const finActualProfit = document.getElementById('fin-actual-profit');
+    if (finActualProfit) {
+        finActualProfit.textContent = `₹${state.stats.actualProfit}`;
+        if (state.stats.actualProfit < 0) {
+            finActualProfit.style.color = "var(--danger)";
+        } else {
+            finActualProfit.style.color = "var(--secondary)";
+        }
+    }
+    
     // Update desktop widgets
     const dRev = document.getElementById('d-rev');
     if (dRev) dRev.textContent = `₹${state.stats.revenue}`;
@@ -1120,6 +1173,18 @@ function recalculateFinances() {
     if (dExp) dExp.textContent = `₹${state.stats.expenses}`;
     const dProfit = document.getElementById('d-profit');
     if (dProfit) dProfit.textContent = `₹${state.stats.profit}`;
+    
+    const dProfitActual = document.getElementById('d-profit-actual');
+    if (dProfitActual) {
+        dProfitActual.textContent = `₹${state.stats.actualProfit}`;
+        if (state.stats.actualProfit < 0) {
+            dProfitActual.style.color = "var(--danger)";
+        } else {
+            dProfitActual.style.color = "var(--secondary)";
+        }
+    }
+    const dPendingRev = document.getElementById('d-pending-rev');
+    if (dPendingRev) dPendingRev.textContent = `₹${state.stats.pendingRevenue}`;
 }
 
 function renderAdminFinances() {
