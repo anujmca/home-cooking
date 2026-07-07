@@ -1493,10 +1493,22 @@ function renderCustomerMenu() {
             
             // If there is an announcement, display it. Otherwise show default open message
             const latestAnnouncement = state.announcements && state.announcements.length > 0 ? state.announcements[0] : `Lunch orders accepted till 11:30 AM. Fresh ingredients only!`;
+            
+            // Check if there are upcoming leave dates
+            let holidayNotice = '';
+            if (state.leave && state.leave.declared && state.leave.dates && state.leave.dates.length > 0) {
+                const leaves = state.leave.dates.map(dateStr => {
+                    const d = new Date(dateStr);
+                    return d.toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+                }).join(', ');
+                holidayNotice = `<div style="margin-top: 4px; font-size: 11px; font-weight: 700; color: #D84315; background: #FFF3E0; border: 1px solid #FFE0B2; padding: 2px 8px; border-radius: 4px; display: inline-block;">🌴 Upcoming Holidays (Kitchen Closed): ${leaves}</div>`;
+            }
+            
             bannerEl.innerHTML = `
                 <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center;">
                     <div style="font-size: 14px; font-weight: 800; letter-spacing: 0.5px;">🟢 KITCHEN IS OPEN FOR ORDERS</div>
                     <div style="font-size: 11.5px; font-weight: 600; opacity: 0.95;">📢 ${latestAnnouncement}</div>
+                    ${holidayNotice}
                 </div>
             `;
         }
@@ -3242,7 +3254,7 @@ function renderCustomerDateStrip() {
         const dayName = isToday ? 'Today' : d.toLocaleDateString('en-IN', {weekday: 'short'});
         const dayNum = d.getDate();
         const monthName = d.toLocaleDateString('en-IN', {month: 'short'});
-        const statusLabel = isClosed ? 'Closed' : 'Open';
+        const statusLabel = isClosed ? '🔴 OFF' : '🟢 OPEN';
         
         card.innerHTML = `
             <span class="date-day">${dayName}</span>
