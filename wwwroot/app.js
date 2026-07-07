@@ -36,126 +36,43 @@ const state = {
             rice: -20,
             sabji: 40
         },
-        items: [
-            { id: 1, name: 'Anshaisha Complete Meal', price: 200, checked: true, isMeal: true },
-            { id: 2, name: 'Paneer Butter Masala (Rich butter paneer gravy)', price: 130, checked: false },
-            { id: 3, name: 'Dal Tadka (Hygienic home style yellow dal)', price: 100, checked: false },
-            { id: 4, name: 'Jeera Rice (Basmati rice with cumin)', price: 80, checked: false },
-            { id: 5, name: 'Chapatis (Soft whole wheat rotis - pack of 3)', price: 30, checked: false },
-            { id: 6, name: 'Veg Biryani (Flavorful veg pulav with raita)', price: 140, checked: false }
-        ]
+        items: []
     },
 
     // Kitchen Orders DB
-    orders: [
-        {
-            id: 'ORD-101',
-            customer: 'Amit Sharma',
-            tower: 'Alexander',
-            floor: '22',
-            flat: '08',
-            address: 'Alexander 2208',
-            items: '1x Complete Meal (Extra Roti)',
-            price: 210,
-            status: 'Delivered', // New | Preparing | Delivered
-            time: 'Today, 11:45 AM',
-            isToday: true,
-            remark: 'Placed on App'
-        },
-        {
-            id: 'ORD-102',
-            customer: 'Sonia Kapoor',
-            tower: 'Ceaser',
-            floor: '14',
-            flat: '02',
-            address: 'Ceaser 1402',
-            items: '1x Complete Meal (No Rice)',
-            price: 180,
-            status: 'Preparing',
-            time: 'Today, 12:10 PM',
-            isToday: true,
-            remark: 'Placed on App'
-        },
-        {
-            id: 'ORD-103',
-            customer: 'Major R. D. Singh',
-            tower: 'Napoleon',
-            floor: '05',
-            flat: '04',
-            address: 'Napoleon 0504',
-            items: '2x Complete Meal',
-            price: 400,
-            status: 'New',
-            time: 'Today, 12:15 PM',
-            isToday: true,
-            remark: 'Received on Phone'
-        },
-        {
-            id: 'ORD-104',
-            customer: 'Vikram Malhotra',
-            tower: 'Alexander',
-            floor: '11',
-            flat: '05',
-            address: 'Alexander 1105',
-            items: '1x Paneer Butter Masala, 1x Jeera Rice',
-            price: 210,
-            status: 'New',
-            time: 'Tomorrow, 12:00 PM',
-            isToday: false,
-            remark: 'Placed on App'
-        }
-    ],
+    orders: [],
 
     // Order History Ledger (Archived orders from previous days)
-    orderHistory: [
-        { id: 'ORD-098', date: 'June 18, 2026', customer: 'Amit Sharma', address: 'Alexander 2208', items: '1x Complete Meal (Extra Roti)', price: 210, status: 'Delivered', remark: 'Placed on App' },
-        { id: 'ORD-097', date: 'June 17, 2026', customer: 'Sonia Kapoor', address: 'Ceaser 1402', items: '1x Complete Meal (No Rice)', price: 180, status: 'Delivered', remark: 'Received on Phone' },
-        { id: 'ORD-096', date: 'June 16, 2026', customer: 'Rahul Verma', address: 'Alexander 3106', items: '2x Complete Meal', price: 400, status: 'Delivered', remark: 'Placed on App' },
-        { id: 'ORD-095', date: 'June 15, 2026', customer: 'Mrs. Iyer', address: 'Napoleon 1801', items: '1x Complete Meal', price: 200, status: 'Delivered', remark: 'Received on Phone' },
-        { id: 'ORD-094', date: 'June 14, 2026', customer: 'Amit Sharma', address: 'Alexander 2208', items: '1x Complete Meal', price: 200, status: 'Delivered', remark: 'Placed on App' }
-    ],
+    orderHistory: [],
 
     // Outstanding Payments DB
-    payments: [
-        { id: 'PAY-01', customer: 'Sonia Kapoor', tower: 'Ceaser', floor: '14', flat: '02', address: 'Ceaser 1402', amount: 320, daysDue: 3, level: 'warning' },
-        { id: 'PAY-02', customer: 'Rahul Verma', tower: 'Alexander', floor: '31', flat: '06', address: 'Alexander 3106', amount: 560, daysDue: 5, level: 'critical' },
-        { id: 'PAY-03', customer: 'Mrs. Iyer', tower: 'Napoleon', floor: '18', flat: '01', address: 'Napoleon 1801', amount: 250, daysDue: 1, level: 'normal' }
-    ],
+    payments: [],
 
     // Business Expenses DB (Logged Today)
-    expenses: [
-        { id: 'EXP-01', category: 'Vegetables', icon: '🥕', amount: 450, notes: 'Tomato, onion, green chili' },
-        { id: 'EXP-02', category: 'Packaging', icon: '📦', amount: 80, notes: 'Eco containers & bags' },
-        { id: 'EXP-03', category: 'Gas', icon: '🔥', amount: 200, notes: 'Refill share' }
-    ],
+    expenses: [],
 
     // Global stats calculated dynamically
     stats: {
-        revenue: 1950,
-        expenses: 730,
-        profit: 1220
+        revenue: 0,
+        expenses: 0,
+        profit: 0
     },
 
     // Customer Shopping Cart state
     cart: [],
     customerProfile: {
-        name: 'Amit Sharma',
-        phone: '9876543210',
+        name: '',
+        phone: '',
         avatar: '👩‍💼'
     },
     customerAddress: {
         tower: 'Alexander',
-        floor: '22',
-        flat: '8'
+        floor: '1',
+        flat: '1'
     },
 
     // Customer Database List & Stats (Analytics)
-    customersList: [
-        { name: "Amit Sharma", tower: "Alexander", floor: "22", flat: "08", phone: "9876543210", orders: 12, spent: 2540, favorite: "Complete Meal" },
-        { name: "Sonia Kapoor", tower: "Ceaser", floor: "14", flat: "02", phone: "9821034988", orders: 8, spent: 1680, favorite: "Paneer Butter Masala" },
-        { name: "Rahul Verma", tower: "Alexander", floor: "31", flat: "06", phone: "9930048123", orders: 15, spent: 3120, favorite: "Complete Meal" },
-        { name: "Mrs. Iyer", tower: "Napoleon", floor: "18", flat: "01", phone: "9819923455", orders: 6, spent: 1200, favorite: "Complete Meal" }
-    ],
+    customersList: [],
 
     // Usability Testing Loggers
     usability: {
@@ -166,15 +83,13 @@ const state = {
     },
     
     // App announcements
-    announcements: [
-        "Meenakashi: Lunch orders accepted till 11:30 AM. Fresh ingredients only!"
-    ],
+    announcements: [],
     
     // Leave status
     leave: {
-        declared: true,
-        dates: ['2026-06-25', '2026-06-26'],
-        reason: 'Kitchen closed for family function'
+        declared: false,
+        dates: [],
+        reason: ''
     }
 };
 

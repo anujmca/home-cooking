@@ -64,8 +64,9 @@ using (var scope = app.Services.CreateScope())
 // --------------------------------------------------------------------------
 // 1. API: Consolidated App State
 // --------------------------------------------------------------------------
-app.MapGet("/api/state", async (AnshaishaDbContext db) =>
+app.MapGet("/api/state", async (AnshaishaDbContext db, HttpContext context) =>
 {
+    context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
     var config = await db.MenuConfigs.FirstOrDefaultAsync() ?? new MenuConfig();
     var items = await db.MenuItems.OrderBy(x => x.Id).ToListAsync();
     var allOrders = await db.Orders.ToListAsync();
