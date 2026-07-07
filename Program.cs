@@ -50,7 +50,19 @@ using (var scope = app.Services.CreateScope())
     }
     catch (PostgresException ex) when (ex.SqlState == "42P01" || ex.SqlState == "42703") // relation or column does not exist
     {
-        db.Database.EnsureDeleted();
+        try
+        {
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Orders\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Customers\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Payments\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Expenses\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"MenuConfigs\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"MenuItems\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"Announcements\" CASCADE;");
+            db.Database.ExecuteSqlRaw("DROP TABLE IF EXISTS \"LeaveConfigs\" CASCADE;");
+        }
+        catch { }
+        
         db.Database.EnsureCreated();
         db.SeedDefaultData();
     }
