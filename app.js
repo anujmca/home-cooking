@@ -518,7 +518,10 @@ function renderAdminMenuBuilder() {
     // Sync editor box value
     document.getElementById('complete-meal-desc-input').value = state.menu.mealDescription;
     document.getElementById('rate-extra-roti').value = state.menu.addons.roti;
-    document.getElementById('rate-no-rice').value = Math.abs(state.menu.addons.rice);
+    const rateNoRiceEl = document.getElementById('rate-no-rice');
+    if (rateNoRiceEl) {
+        rateNoRiceEl.value = Math.abs(state.menu.addons.rice);
+    }
     document.getElementById('rate-extra-sabji').value = state.menu.addons.sabji;
 
     // Render other optional presets
@@ -598,7 +601,7 @@ async function publishDailyMenu() {
     const selectedSession = document.querySelector('input[name="menu-time"]:checked').value;
     const mealDesc = document.getElementById('complete-meal-desc-input').value.trim();
     const rotiRate = parseInt(document.getElementById('rate-extra-roti').value) || 10;
-    const riceRate = -20; // Default flat discount for No Rice
+    const riceRate = 0; // Default flat discount for No Rice (disabled as option is removed from builder)
     const sabjiRate = parseInt(document.getElementById('rate-extra-sabji').value) || 40;
     
     const activeDishes = state.menu.items.filter(item => item.checked);
@@ -1383,6 +1386,8 @@ async function simulateNewOrder() {
         
         const banner = document.getElementById('incoming-order-banner');
         if (banner) {
+            const titleEl = banner.querySelector('strong');
+            if (titleEl) titleEl.textContent = 'New Order Received!';
             document.getElementById('banner-order-desc').textContent = `${address} - ₹${price}`;
             banner.classList.remove('hidden');
         }
@@ -1470,7 +1475,12 @@ function renderCustomerMenu() {
             bannerEl.style.backgroundColor = 'var(--danger-light)';
             bannerEl.style.borderColor = 'rgba(216, 67, 21, 0.2)';
             bannerEl.style.color = 'var(--danger)';
-            bannerEl.innerHTML = `🔴 <strong>Kitchen is CLOSED</strong> for ${isTodaySelected ? 'Today' : new Date(selectedDateStr).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'})}. No orders accepted.`;
+            bannerEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 800; letter-spacing: 0.5px;">🔴 KITCHEN IS CLOSED</div>
+                    <div style="font-size: 11px; font-weight: 600; opacity: 0.95;">No orders are being accepted for ${isTodaySelected ? 'Today' : new Date(selectedDateStr).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'})}.</div>
+                </div>
+            `;
         } else {
             bannerEl.style.backgroundColor = '#E8F5E9'; // light green
             bannerEl.style.borderColor = '#C8E6C9';
@@ -1478,7 +1488,12 @@ function renderCustomerMenu() {
             
             // If there is an announcement, display it. Otherwise show default open message
             const latestAnnouncement = state.announcements && state.announcements.length > 0 ? state.announcements[0] : `Lunch orders accepted till 11:30 AM. Fresh ingredients only!`;
-            bannerEl.innerHTML = `🟢 <strong>Kitchen is OPEN</strong> | 📢 <em>${latestAnnouncement}</em>`;
+            bannerEl.innerHTML = `
+                <div style="display: flex; flex-direction: column; gap: 4px; align-items: center; justify-content: center; text-align: center;">
+                    <div style="font-size: 14px; font-weight: 800; letter-spacing: 0.5px;">🟢 KITCHEN IS OPEN FOR ORDERS</div>
+                    <div style="font-size: 11.5px; font-weight: 600; opacity: 0.95;">📢 ${latestAnnouncement}</div>
+                </div>
+            `;
         }
     }
     
@@ -1575,9 +1590,11 @@ function renderCustomerMenu() {
                     <label style="font-size:11px; font-weight:500;">
                         <input type="checkbox" id="add-opt-roti-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> Extra Roti (+₹${state.menu.addons.roti})
                     </label>
+                    ${state.menu.addons.rice < 0 ? `
                     <label style="font-size:11px; font-weight:500;">
                         <input type="checkbox" id="add-opt-norice-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> No Rice (-₹${Math.abs(state.menu.addons.rice)})
                     </label>
+                    ` : `<input type="checkbox" id="add-opt-norice-${d.id}" style="display:none;" onchange="recalculateCustFoodPrice(${d.id})">`}
                     <label style="font-size:11px; font-weight:500;">
                         <input type="checkbox" id="add-opt-sabji-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> Extra Sabji (+₹${state.menu.addons.sabji})
                     </label>
@@ -1810,6 +1827,74 @@ function updateGeneratedAddress() {
     if (profileAddrCompiled) profileAddrCompiled.textContent = `Address Compiled: ${addressStr}`;
 }
 
+function togglePaymentUpiDetails(val) {
+    const box = document.getElementById('upi-payment-details-box');
+    if (box) {
+        box.style.display = val === 'now' ? 'block' : 'none';
+    }
+}
+
+function resetDeliveryAddressToProfile() {
+    trackTap();
+    syncCheckoutAddressFromProfile();
+    showToast("🔄 Address reset to profile defaults", "info");
+}
+
+function syncCheckoutAddressFromProfile() {
+    const t = state.customerAddress.tower;
+    const fl = state.customerAddress.floor;
+    const flat = state.customerAddress.flat;
+
+    const mobTowerGroup = document.getElementById('cust-tower-group');
+    if (mobTowerGroup) {
+        mobTowerGroup.querySelectorAll('button').forEach(btn => {
+            if (btn.textContent.trim().toLowerCase() === t.toLowerCase()) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+    const deskTowerGroup = document.getElementById('desk-tower-group');
+    if (deskTowerGroup) {
+        deskTowerGroup.querySelectorAll('button').forEach(btn => {
+            if (btn.textContent.trim().toLowerCase() === t.toLowerCase()) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        });
+    }
+
+    const mobFloorTyped = document.getElementById('cust-floor-typed');
+    if (mobFloorTyped) mobFloorTyped.value = fl;
+    const mobFloorSlider = document.getElementById('cust-floor-slider');
+    if (mobFloorSlider) mobFloorSlider.value = fl;
+    const deskFloorTyped = document.getElementById('desk-floor-typed');
+    if (deskFloorTyped) deskFloorTyped.value = fl;
+    const deskFloorSlider = document.getElementById('desk-floor-slider');
+    if (deskFloorSlider) deskFloorSlider.value = fl;
+
+    const mobFlats = document.querySelectorAll('.flat-selector-mini .flat-btn');
+    mobFlats.forEach(btn => {
+        if (parseInt(btn.textContent) === parseInt(flat)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+    const deskFlats = document.querySelectorAll('.flat-input-col .flat-btn');
+    deskFlats.forEach(btn => {
+        if (parseInt(btn.textContent) === parseInt(flat)) {
+            btn.classList.add('active');
+        } else {
+            btn.classList.remove('active');
+        }
+    });
+
+    updateGeneratedAddress();
+}
+
 function showCheckoutModal() {
     trackTap();
     const checkoutList = document.getElementById('cust-checkout-items');
@@ -1830,20 +1915,24 @@ function showCheckoutModal() {
     
     document.getElementById('payment-checkbox-confirm').checked = false;
     
-    // Sync default profile values into checkout controls
-    document.getElementById('cust-floor-typed').value = state.customerAddress.floor;
-    document.getElementById('cust-floor-slider').value = state.customerAddress.floor;
+    const payLaterRadio = document.getElementById('pay-method-later');
+    if (payLaterRadio) payLaterRadio.checked = true;
+    togglePaymentUpiDetails('later');
+
+    syncCheckoutAddressFromProfile();
     
-    updateGeneratedAddress();
     openModal('customer-checkout-modal');
 }
 
 async function submitCustOrder() {
     trackTap();
-    const confirmBox = document.getElementById('payment-checkbox-confirm');
-    if (!confirmBox.checked) {
-        showToast("⚠️ Please check the box to confirm you completed the UPI transfer.", "info");
-        return;
+    const isPayLater = document.getElementById('pay-method-later').checked;
+    if (!isPayLater) {
+        const confirmBox = document.getElementById('payment-checkbox-confirm');
+        if (!confirmBox.checked) {
+            showToast("⚠️ Please check the box to confirm you completed the UPI transfer.", "info");
+            return;
+        }
     }
     
     closeModal('customer-checkout-modal');
@@ -1853,7 +1942,8 @@ async function submitCustOrder() {
     const finalAddress = `${state.customerAddress.tower} ${state.customerAddress.floor}${flatPadded}`;
     
     const isTodaySelected = state.customerOrderingDate === 'today';
-    const remark = isTodaySelected ? 'Placed on App' : 'Future Booked';
+    const paymentSuffix = isPayLater ? ' (Pay Later)' : ' (UPI Paid Advance)';
+    const remark = (isTodaySelected ? 'Placed on App' : 'Future Booked') + paymentSuffix;
 
     try {
         const res = await fetch('/api/orders', {
@@ -1882,7 +1972,16 @@ async function submitCustOrder() {
         
         const banner = document.getElementById('incoming-order-banner');
         if (banner) {
-            document.getElementById('banner-order-desc').textContent = `${finalAddress} - ₹${total}`;
+            const titleEl = banner.querySelector('strong');
+            if (isTodaySelected) {
+                if (titleEl) titleEl.textContent = 'New Order Received!';
+                document.getElementById('banner-order-desc').textContent = `${finalAddress} - ₹${total}`;
+            } else {
+                const targetDate = state.customerSelectedFutureDate;
+                const formattedDate = new Date(targetDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' });
+                if (titleEl) titleEl.textContent = '📅 New Future Order Received!';
+                document.getElementById('banner-order-desc').textContent = `${finalAddress} - ₹${total} (For ${formattedDate})`;
+            }
             banner.classList.remove('hidden');
         }
         
@@ -2259,7 +2358,9 @@ function renderCustomerDesktop() {
                 <div class="complete-meal-add-ons-box" id="desk-addons-${d.id}" style="margin-top: 10px; border-top:1px dashed var(--app-border); padding-top:8px; width:100%; display:flex; gap:16px;">
                     <small style="font-weight:700; color:var(--text-muted); display:block; align-self:center;">CUSTOMIZE:</small>
                     <label style="font-size:11px;"><input type="checkbox" id="add-opt-roti-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> Extra Roti (+₹${state.menu.addons.roti})</label>
+                    ${state.menu.addons.rice < 0 ? `
                     <label style="font-size:11px;"><input type="checkbox" id="add-opt-norice-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> No Rice (-₹${Math.abs(state.menu.addons.rice)})</label>
+                    ` : `<input type="checkbox" id="add-opt-norice-${d.id}" style="display:none;" onchange="recalculateCustFoodPrice(${d.id})">`}
                     <label style="font-size:11px;"><input type="checkbox" id="add-opt-sabji-${d.id}" onchange="recalculateCustFoodPrice(${d.id})"> Extra Sabji (+₹${state.menu.addons.sabji})</label>
                 </div>
             `;
@@ -3048,7 +3149,6 @@ function selectCustomerOrderingDate(mode, val = '') {
         if (dateLabel) {
             dateLabel.textContent = 'Today (June 21)';
         }
-        showToast("🍛 Switched ordering date to Today", "info");
     } else {
         state.customerOrderingDate = 'future';
         state.customerSelectedFutureDate = val;
@@ -3056,7 +3156,6 @@ function selectCustomerOrderingDate(mode, val = '') {
         // Format nice date
         const niceDate = new Date(val).toLocaleDateString('en-IN', {weekday: 'short', month: 'short', day: 'numeric'});
         if (dateLabel) dateLabel.textContent = `Future: ${niceDate}`;
-        showToast(`📅 Booking for future date: ${niceDate}`, "success");
     }
     
     renderCustomerMenu();
