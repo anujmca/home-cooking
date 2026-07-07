@@ -2734,41 +2734,45 @@ function updateLeaveSummaryText() {
     }
 }
 
-function saveLeave() {
+async function saveLeave() {
     trackTap();
     const reason = document.getElementById('leave-reason').value.trim() || 'Kitchen closed';
     const datesArr = Array.from(tempLeaveDates).sort();
+    const declared = datesArr.length > 0;
     
-    if (datesArr.length === 0) {
-        state.leave = { declared: false, dates: [], reason: '' };
+    try {
+        const res = await fetch('/api/leave', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                declared: declared,
+                dates: datesArr,
+                reason: declared ? reason : ''
+            })
+        });
         
-        const bannerText = document.getElementById('announcement-banner-view');
-        if (bannerText) {
-            bannerText.innerHTML = `📢 <em>Meenakashi:</em> Lunch orders accepted till 11:30 AM. Fresh ingredients only!`;
-        }
-        showToast("📅 Cleared all leave days.", "info");
-    } else {
-        state.leave = { declared: true, dates: datesArr, reason: reason };
+        if (!res.ok) throw new Error("Failed to save leave configuration.");
         
-        let dateStr = '';
-        if (datesArr.length === 1) {
-            dateStr = new Date(datesArr[0]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+        await syncStateWithBackend();
+        
+        if (!declared) {
+            showToast("📅 Cleared all leave days.", "info");
         } else {
-            const startStr = new Date(datesArr[0]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
-            const endStr = new Date(datesArr[datesArr.length - 1]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
-            dateStr = `${startStr} to ${endStr}`;
+            let dateStr = '';
+            if (datesArr.length === 1) {
+                dateStr = new Date(datesArr[0]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+            } else {
+                const startStr = new Date(datesArr[0]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+                const endStr = new Date(datesArr[datesArr.length - 1]).toLocaleDateString('en-IN', {month: 'short', day: 'numeric'});
+                dateStr = `${startStr} to ${endStr}`;
+            }
+            showToast(`📅 Kitchen marked closed for: ${dateStr}!`, "info");
         }
-        
-        const bannerText = document.getElementById('announcement-banner-view');
-        if (bannerText) {
-            bannerText.innerHTML = `📢 <em>Meenakashi:</em> Kitchen Closed on (${dateStr}) due to: ${reason}`;
-        }
-        
-        showToast(`📅 Kitchen marked closed for: ${dateStr}!`, "info");
+    } catch (e) {
+        showToast("❌ Error saving leaves: " + e.message, "danger");
     }
     
     closeModal('leave-modal');
-    showToast(`📅 Kitchen marked closed for: ${dateStr}!`, "info");
 }
 
 function renderCustomerListModal() {
