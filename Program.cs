@@ -29,9 +29,21 @@ var app = builder.Build();
 // Enable CORS
 app.UseCors("AllowAll");
 
-// Serve static files (wwwroot)
+// Serve static files (wwwroot) with disabled cache for html, js, and css
 app.UseDefaultFiles();
-app.UseStaticFiles();
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var path = ctx.Context.Request.Path.Value ?? "";
+        if (path.EndsWith(".html") || path.EndsWith("app.js") || path.EndsWith("style.css") || path == "/")
+        {
+            ctx.Context.Response.Headers.CacheControl = "no-cache, no-store, must-revalidate";
+            ctx.Context.Response.Headers.Pragma = "no-cache";
+            ctx.Context.Response.Headers.Expires = "0";
+        }
+    }
+});
 
 // Automatic DB Initialization and Seeding on startup
 using (var scope = app.Services.CreateScope())

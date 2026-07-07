@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json.Serialization;
 
 namespace AnshaishaBackend.Models;
 
@@ -129,7 +130,11 @@ public record BulkOrderRequest(System.Collections.Generic.List<string> OrderIds)
 
 public record CreateExpenseRequest(string Category, string Icon, decimal Amount, string Notes);
 
-public record UpdateLeaveRequest(bool Declared, System.Collections.Generic.List<string> Dates, string Reason);
+public record UpdateLeaveRequest(
+    [property: JsonPropertyName("declared")] bool Declared, 
+    [property: JsonPropertyName("dates")] System.Collections.Generic.List<string> Dates, 
+    [property: JsonPropertyName("reason")] string Reason
+);
 
 public record UpdateAnnouncementRequest(string Message);
 
