@@ -593,13 +593,6 @@ async function addCustomDish() {
     }
 }
 
-function selectGraphicTemplate(card, templateName) {
-    trackTap();
-    document.querySelectorAll('.template-card').forEach(t => t.classList.remove('active'));
-    card.classList.add('active');
-    state.menu.graphicTemplate = templateName;
-}
-
 async function publishDailyMenu() {
     trackTap();
     const selectedSession = document.querySelector('input[name="menu-time"]:checked').value;
@@ -1547,7 +1540,7 @@ function renderCustomerMenu() {
         card.className = 'food-item-card';
         card.style.flexDirection = 'column'; // Allow modifications list to fit underneath
         
-        let photoColor = state.menu.graphicTemplate;
+        let photoColor = 'saffron';
         
         // Find existing quantities in cart
         const cartItems = state.cart.filter(c => c.id === d.id);
