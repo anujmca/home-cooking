@@ -3029,6 +3029,14 @@ window.addEventListener('DOMContentLoaded', () => {
     // Restore session from localStorage if present
     if (localStorage.getItem('adminUnlocked') === 'true') {
         state.isAdminUnlocked = true;
+        const loginEl = document.getElementById('admin-login-screen');
+        const shellEl = document.getElementById('admin-app-shell');
+        if (loginEl && shellEl) {
+            loginEl.classList.remove('active');
+            shellEl.classList.add('active');
+        }
+        recalculateFinances();
+        adminSwitchTab('dash');
     }
     if (localStorage.getItem('isCustomerLoggedIn') === 'true') {
         state.isCustomerLoggedIn = true;
