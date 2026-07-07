@@ -206,6 +206,11 @@ async function syncStateWithBackend(isAutoInterval = false) {
             renderQuickProfiles();
         }
 
+        // Sync kitchen status UI elements
+        if (typeof updateKitchenClosedTodayUI === 'function') {
+            updateKitchenClosedTodayUI(state.kitchenClosedToday);
+        }
+
         refreshActiveView(isAutoInterval);
     } catch (e) {
         console.error('Error syncing state:', e);
@@ -3095,6 +3100,16 @@ async function toggleKitchenClosedToday(isClosed) {
         console.error("Failed to save kitchen status to server", e);
     }
 
+    updateKitchenClosedTodayUI(isClosed);
+
+    if (isClosed) {
+        showToast("🔴 Kitchen closed for today! Customers cannot place new orders for today.", "info");
+    } else {
+        showToast("🟢 Kitchen is open! Customers can now order for today.", "success");
+    }
+}
+
+function updateKitchenClosedTodayUI(isClosed) {
     // Mobile UI Sync
     const dot = document.getElementById('k-status-indicator-dot');
     const desc = document.getElementById('k-status-msg-desc');
@@ -3133,12 +3148,6 @@ async function toggleKitchenClosedToday(isClosed) {
     const closeTodayCheck = document.getElementById('leave-close-today-checkbox');
     if (closeTodayCheck) {
         closeTodayCheck.checked = isClosed;
-    }
-
-    if (isClosed) {
-        showToast("🔴 Kitchen closed for today! Customers cannot place new orders for today.", "info");
-    } else {
-        showToast("🟢 Kitchen is open! Customers can now order for today.", "success");
     }
 
     // Force sync Menu & Date Strip
