@@ -907,6 +907,32 @@ async function deliverOrder(orderId) {
 function openImpersonationModal() {
     trackTap();
     
+    // Populate customer select dynamically from database customer list
+    const selectEl = document.getElementById('imp-customer-select');
+    if (selectEl) {
+        selectEl.innerHTML = '';
+        state.customersList.forEach(c => {
+            const opt = document.createElement('option');
+            opt.value = c.name;
+            const flatPadded = c.flat < 10 && !c.flat.toString().startsWith('0') ? `0${c.flat}` : c.flat;
+            opt.textContent = `${c.name} (${c.tower} ${c.floor}${flatPadded})`;
+            selectEl.appendChild(opt);
+        });
+        
+        const walkInOpt = document.createElement('option');
+        walkInOpt.value = 'New Walk-in';
+        walkInOpt.textContent = '➕ Add New / Walk-in Customer...';
+        selectEl.appendChild(walkInOpt);
+        
+        if (state.customersList.length > 0) {
+            selectEl.value = state.customersList[0].name;
+            document.getElementById('imp-new-cust-fields').classList.add('hidden');
+        } else {
+            selectEl.value = 'New Walk-in';
+            document.getElementById('imp-new-cust-fields').classList.remove('hidden');
+        }
+    }
+    
     // Render check items checkboxes based on published menu
     const menuItemsBox = document.getElementById('imp-menu-items-selection');
     menuItemsBox.innerHTML = '';
@@ -925,8 +951,6 @@ function openImpersonationModal() {
     });
 
     // Reset Form Fields
-    document.getElementById('imp-customer-select').value = "Amit Sharma";
-    document.getElementById('imp-new-cust-fields').classList.add('hidden');
     document.getElementById('imp-opt-roti').checked = false;
     document.getElementById('imp-opt-norice').checked = false;
     document.getElementById('imp-opt-sabji').checked = false;
@@ -2895,6 +2919,65 @@ async function saveCustomerEdit(oldPhone) {
     } catch (err) {
         console.error("Error updating customer profile", err);
         showToast("❌ Error updating customer profile.", "error");
+    }
+}
+
+function toggleAddCustomerForm() {
+    trackTap();
+    const box = document.getElementById('add-cust-form-box');
+    if (box) {
+        box.classList.toggle('hidden');
+    }
+}
+
+async function submitAddedCustomer() {
+    trackTap();
+    const name = document.getElementById('add-cust-name').value.trim();
+    const phone = document.getElementById('add-cust-phone').value.trim();
+    const tower = document.getElementById('add-cust-tower').value;
+    const floor = document.getElementById('add-cust-floor').value.trim();
+    const flat = document.getElementById('add-cust-flat').value.trim();
+    
+    if (!name || !phone || !floor || !flat) {
+        showToast("⚠️ Please fill all fields.", "error");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/customers/profile/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                oldPhone: phone,
+                newPhone: phone,
+                name: name,
+                tower: tower,
+                floor: floor,
+                flat: flat
+            })
+        });
+        
+        if (res.ok) {
+            showToast("👥 New customer added successfully!", "success");
+            
+            // Clear inputs
+            document.getElementById('add-cust-name').value = '';
+            document.getElementById('add-cust-phone').value = '';
+            document.getElementById('add-cust-floor').value = '';
+            document.getElementById('add-cust-flat').value = '';
+            
+            // Hide box
+            document.getElementById('add-cust-form-box').classList.add('hidden');
+            
+            // Sync and re-render
+            await syncStateWithBackend();
+            renderCustomerListModal();
+        } else {
+            showToast("❌ Failed to add customer.", "error");
+        }
+    } catch (err) {
+        console.error("Error adding customer", err);
+        showToast("❌ Error adding customer.", "error");
     }
 }
 

@@ -1083,9 +1083,33 @@
                 <button class="close-btn" onclick="closeModal('customer-list-modal')">✖</button>
             </div>
             <div class="modal-body">
-                <div class="cust-search-row" style="margin-bottom:10px;">
-                    <input type="text" id="search-customer-input" placeholder="🔍 Search by name or tower..." oninput="filterCustomerList(this.value)">
+                <div class="cust-search-row" style="margin-bottom:10px; display: flex; gap: 8px;">
+                    <input type="text" id="search-customer-input" placeholder="🔍 Search by name or tower..." oninput="filterCustomerList(this.value)" style="flex: 1;">
+                    <button class="primary-action-btn" onclick="toggleAddCustomerForm()" style="margin: 0; padding: 6px 12px; font-size: 11px; white-space: nowrap;">➕ Add</button>
                 </div>
+                
+                <!-- Add Customer Form Block (Hidden by default) -->
+                <div id="add-cust-form-box" class="hidden" style="border: 1px solid var(--app-border); padding: 10px; border-radius: 8px; background-color: rgba(0,0,0,0.015); margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px;">
+                    <h5 style="margin: 0; color: var(--primary);">➕ Add New Customer</h5>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="add-cust-name" placeholder="Full Name" style="flex: 1; padding: 6px; font-size: 11.5px; border-radius: 4px; border: 1px solid var(--app-border);">
+                        <input type="text" id="add-cust-phone" placeholder="Phone Number" style="flex: 1; padding: 6px; font-size: 11.5px; border-radius: 4px; border: 1px solid var(--app-border);">
+                    </div>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <select id="add-cust-tower" style="flex: 1.5; padding: 6px; font-size: 11.5px; border-radius: 4px; border: 1px solid var(--app-border); background-color: white;">
+                            <option value="Alexander">Alexander</option>
+                            <option value="Ceaser">Ceaser</option>
+                            <option value="Napoleon">Napoleon</option>
+                        </select>
+                        <input type="number" id="add-cust-floor" placeholder="Floor" style="width: 55px; padding: 6px; font-size: 11.5px; border-radius: 4px; border: 1px solid var(--app-border);">
+                        <input type="number" id="add-cust-flat" placeholder="Flat" style="width: 55px; padding: 6px; font-size: 11.5px; border-radius: 4px; border: 1px solid var(--app-border);">
+                    </div>
+                    <div style="display: flex; justify-content: flex-end; gap: 8px;">
+                        <button class="secondary-action-btn" onclick="toggleAddCustomerForm()" style="padding: 4px 8px; font-size: 10px; margin: 0;">Cancel</button>
+                        <button class="primary-action-btn" onclick="submitAddedCustomer()" style="padding: 4px 8px; font-size: 10px; margin: 0;">Submit</button>
+                    </div>
+                </div>
+                
                 <ul class="cust-db-list" id="modal-customer-list">
                     <!-- Dynamic rendering with order frequencies, revenues and favorites -->
                 </ul>
